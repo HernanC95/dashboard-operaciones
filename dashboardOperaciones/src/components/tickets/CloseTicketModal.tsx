@@ -13,7 +13,7 @@ function toLocalDateTimeValue(d: Date) {
 
 export type CloseTicketPayload = {
   ticketId: string;
-  closedBy: ActorRef; // ✅ ahora coincide con lo que enviás
+  closedBy: ActorRef;
   closeDescription: string;
   closedAt?: Date;
 };
@@ -22,7 +22,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   ticket?: Ticket | null;
-  onConfirm: (payload: CloseTicketPayload) => void; // ✅ tipado correcto
+  onConfirm: (payload: CloseTicketPayload) => void;
 };
 
 export default function CloseTicketModal({
@@ -32,8 +32,10 @@ export default function CloseTicketModal({
   onConfirm,
 }: Props) {
   const [closedBy, setClosedBy] = useState<ActorRef>(PEOPLE[0]);
-  const [closeDescription, setCloseDescription] = useState("");
-  const [useNow, setUseNow] = useState(true);
+  const [closeDescription, setCloseDescription] = useState(
+    ticket?.details ? ticket.details : ""
+  );
+  const [useNow, setUseNow] = useState(false);
   const [closedAtValue, setClosedAtValue] = useState(() =>
     toLocalDateTimeValue(new Date())
   );
@@ -47,7 +49,7 @@ export default function CloseTicketModal({
       ticketId: ticket.id,
       closedBy,
       closeDescription: closeDescription.trim(),
-      closedAt: useNow ? undefined : new Date(closedAtValue),
+      closedAt: !useNow ? undefined : new Date(closedAtValue),
     });
 
     onClose();
@@ -61,19 +63,27 @@ export default function CloseTicketModal({
       maxWidthClassName="max-w-[780px]"
     >
       <div className="space-y-4">
-        {/* Resumen */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-sm font-extrabold text-slate-900">
-            {ticket ? ticket.title : "—"}
-          </div>
           <div className="mt-1 text-sm text-slate-600">
-            Operador:{" "}
+            Creado por:{" "}
             <span className="font-semibold text-slate-800">
               {ticket?.operatorLabel ?? "—"}
             </span>
           </div>
         </div>
-
+        {/* Descripción */}
+        <div>
+          <label className="text-sm font-bold text-slate-700">
+            Descripción de cierre (opcional)
+          </label>
+          <textarea
+            value={closeDescription}
+            onChange={(e) => setCloseDescription(e.target.value)}
+            placeholder="Detalle breve de la resolución..."
+            rows={4}
+            className="mt-2 w-full resize-none rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+          />
+        </div>
         {/* Quién cierra */}
         <div>
           <label className="text-sm font-bold text-slate-700">
@@ -96,31 +106,11 @@ export default function CloseTicketModal({
           </select>
         </div>
 
-        {/* Descripción */}
-        <div>
-          <label className="text-sm font-bold text-slate-700">
-            Descripción de cierre (opcional)
-          </label>
-          <textarea
-            value={closeDescription}
-            onChange={(e) => setCloseDescription(e.target.value)}
-            placeholder="Detalle breve de la resolución..."
-            rows={4}
-            className="mt-2 w-full resize-none rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
-          />
-        </div>
-
         {/* Hora de cierre */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-sm font-extrabold text-slate-900">
-                Hora de cierre
-              </div>
-              <div className="mt-1 text-sm text-slate-500">
-                Si desactivás “usar hora actual”, podés definir la hora
-                manualmente.
-              </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm font-extrabold text-slate-900">
+              Definir Hora manualmente
             </div>
 
             <button
@@ -141,7 +131,7 @@ export default function CloseTicketModal({
             </button>
           </div>
 
-          {!useNow ? (
+          {useNow ? (
             <div className="mt-4">
               <input
                 type="datetime-local"

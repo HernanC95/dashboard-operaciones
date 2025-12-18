@@ -5,29 +5,25 @@ import { TicketKind as TicketKindValues } from "./enums";
 type TicketBase = {
   id: string;
   date: Date;
-
-  kind: TicketKind;
+  ticketKind: TicketKind;
   operatorLabel: string;
-
-  title: string;
-  details?: string;
-
+  details: string;
   status: TicketStatus;
-
   tags?: TicketTag[];
   mentions?: string[];
-
   audit: TicketAudit;
 };
 
 export type TicketIngreso = TicketBase & {
-  kind: typeof TicketKindValues.INGRESO;
-  site: string;
+  ticketKind: typeof TicketKindValues.INGRESO;
+  siteId: string;
+  siteLabel: string;
 };
 
 export type TicketNoIngreso = TicketBase & {
-  kind: Exclude<TicketKind, typeof TicketKindValues.INGRESO>;
-  site?: never;
+  ticketKind: Exclude<TicketKind, typeof TicketKindValues.INGRESO>;
+  siteId?: never;
+  siteLabel?: never;
 };
 
 export type Ticket = TicketIngreso | TicketNoIngreso;

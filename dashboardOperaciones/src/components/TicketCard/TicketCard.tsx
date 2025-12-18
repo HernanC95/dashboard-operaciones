@@ -2,21 +2,21 @@ import type { Ticket } from "../../interfaces/Ticket";
 import type { TicketTag } from "../../interfaces/enums";
 import { TicketKind, TicketStatus } from "../../interfaces/enums";
 import { formatTimeAR } from "../../utils/date";
+import ClampText from "../ui/ClampText";
 
-function leftBorderByStatus(status: Ticket["status"]) {
-  switch (status) {
-    case "CERRADO":
-      return "border-l-green-500";
-    case "ABIERTO":
-      return "border-l-orange-500";
+function leftBorderbyKind(kind: TicketKind) {
+  switch (kind) {
+    case "Z15":
+      return "border-l-red-500";
+    case "NOTICIA":
+      return "border-l-purple-500";
     default:
       return "border-l-blue-500";
   }
 }
 
-function kindChip(kind: Ticket["kind"]) {
-  if (kind === TicketKind.Z15)
-    return "bg-green-100 text-green-700 border-green-200";
+function kindChip(kind: TicketKind) {
+  if (kind === TicketKind.Z15) return "bg-red-100 text-red-700 border-red-200";
   if (kind === TicketKind.NOTICIA)
     return "bg-purple-100 text-purple-700 border-purple-200";
   if (kind === TicketKind.INGRESO)
@@ -44,7 +44,7 @@ export default function TicketCard({ ticket }: Props) {
       className={[
         "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",
         "border-l-4",
-        leftBorderByStatus(ticket.status),
+        leftBorderbyKind(ticket.ticketKind),
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
@@ -59,10 +59,10 @@ export default function TicketCard({ ticket }: Props) {
           <span
             className={[
               "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
-              kindChip(ticket.kind),
+              kindChip(ticket.ticketKind),
             ].join(" ")}
           >
-            {ticket.kind}
+            {ticket.ticketKind}
           </span>
 
           {ticket.tags?.map((t) => (
@@ -90,15 +90,18 @@ export default function TicketCard({ ticket }: Props) {
         </div>
       </div>
 
-      <p className="mt-3 text-sm font-extrabold text-blue-700">
-        {ticket.title}
-      </p>
+      {/* <ClampText
+        text={ticket.title}
+        lines={3}
+        className="mt-2 text-sm font-bold text-blue-700"
+      /> */}
+      <ClampText
+        text={ticket.details}
+        lines={3}
+        className="mt-2 text-sm text-slate-700"
+      />
 
-      {ticket.details ? (
-        <p className="mt-2 text-sm text-slate-700">{ticket.details}</p>
-      ) : null}
-
-      <div className="mt-4 space-y-1 text-sm text-slate-500">
+      <div className="mt-4 space-y-1 text-xs text-slate-500">
         <div>
           Cargado por:{" "}
           <span className="font-semibold text-slate-700">

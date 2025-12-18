@@ -14,7 +14,7 @@ import type { Ticket } from "../../interfaces/Ticket";
 import { useState } from "react";
 
 export default function DashboardPage() {
-  const now = new Date("2025-12-17T12:00:00");
+  const now = new Date();
   const yearDay = formatYearDay(now);
 
   // ✅ estado real
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       }
       right={
         <div className="space-y-4">
-          <RightActions dateLabel="17/12/2025" onNew={newTicketModal.open} />
+          <RightActions onNew={newTicketModal.open} />
           <PendingPanel
             tickets={tickets}
             onRequestClose={(t) => {
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           />
           {closeTicketModal.isOpen && ticketToClose ? (
             <CloseTicketModal
-              key={ticketToClose.id} // 👈 fuerza remount cuando cambia el ticket
+              key={ticketToClose.id}
               open={closeTicketModal.isOpen}
               ticket={ticketToClose}
               onClose={() => {

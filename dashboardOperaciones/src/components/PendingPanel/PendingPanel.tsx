@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { Ticket } from "../../interfaces/Ticket";
-import { TicketStatus, TicketTag } from "../../interfaces/enums";
+import { TicketKind, TicketStatus, TicketTag } from "../../interfaces/enums";
 import { formatTimeAR } from "../../utils/date";
+import ClampText from "../ui/ClampText";
 
 type Props = {
   tickets: Ticket[];
@@ -10,10 +11,23 @@ type Props = {
 
 export default function PendingPanel({ tickets, onRequestClose }: Props) {
   const openCount = useMemo(
-    () => tickets.filter((t) => t.status === TicketStatus.ABIERTO).length,
+    () =>
+      tickets.filter(
+        (t) =>
+          t.status === TicketStatus.ABIERTO &&
+          !t.tags?.includes(TicketTag.RECORDATORIO)
+      ).length,
     [tickets]
   );
-
+  function kindChip(kind: TicketKind) {
+    if (kind === TicketKind.Z15)
+      return "bg-red-100 text-red-700 border-red-200";
+    if (kind === TicketKind.NOTICIA)
+      return "bg-purple-100 text-purple-700 border-purple-200";
+    if (kind === TicketKind.INGRESO)
+      return "bg-blue-100 text-blue-700 border-blue-200";
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  }
   const remindersCount = useMemo(
     () =>
       tickets.filter((t) => t.tags?.includes(TicketTag.RECORDATORIO)).length,
@@ -58,33 +72,53 @@ export default function PendingPanel({ tickets, onRequestClose }: Props) {
         {items.map((t) => (
           <div
             key={t.id}
-            className="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm"
+            className="flex flex-col rounded-2xl border border-blue-200 bg-white p-3 shadow-sm"
           >
+            {t.tags?.includes(TicketTag.RECORDATORIO) ? (
+              <span className="inline-flex mb-3 items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
+                RECORDATORIO
+              </span>
+            ) : (
+              <span className="inline-flex mb-3 items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200">
+                ABIERTO
+              </span>
+            )}
             <div className="flex items-start justify-between gap-3">
               <div className="text-sm font-extrabold text-slate-900">
                 {formatTimeAR(t.date)} HS
               </div>
-
-              {t.tags?.includes(TicketTag.RECORDATORIO) ? (
-                <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
-                  RECORDATORIO
+              <div className="flex gap-2">
+                <span
+                  className={[
+                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
+                    kindChip(t.ticketKind),
+                  ].join(" ")}
+                >
+                  {t.ticketKind}
                 </span>
-              ) : null}
-              {t.status === TicketStatus.ABIERTO ? (
-                <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-100 text-orange-700 border-l-orange-500">
-                  ABIERTO
-                </span>
-              ) : null}
+                {t.siteLabel ? (
+                  <span
+                    className={[
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
+                      kindChip(t.ticketKind),
+                    ].join(" ")}
+                  >
+                    {t.siteLabel}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            <div className="mt-2 text-sm font-bold text-blue-700">
-              {t.title}
-            </div>
+            <ClampText
+              text={t.details}
+              lines={3}
+              className="mt-2 text-sm text-slate-700"
+            />
 
-            <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+            <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
               <div>
                 Cargado por:{" "}
-                <span className="font-semibold text-slate-800">
+                <span className="text-xs font-semibold text-slate-800">
                   {t.audit.createBy.name}
                 </span>
               </div>
