@@ -5,29 +5,27 @@ import { formatTimeAR } from "../../utils/date";
 
 type Props = {
   tickets: Ticket[];
+  onRequestClose: (ticket: Ticket) => void;
 };
 
-export default function PendingPanel({ tickets }: Props) {
+export default function PendingPanel({ tickets, onRequestClose }: Props) {
+  const openCount = useMemo(
+    () => tickets.filter((t) => t.status === TicketStatus.ABIERTO).length,
+    [tickets]
+  );
+
   const remindersCount = useMemo(
     () =>
       tickets.filter((t) => t.tags?.includes(TicketTag.RECORDATORIO)).length,
     [tickets]
   );
-
-  const openCount = useMemo(
-    () => tickets.filter((t) => t.status !== TicketStatus.CERRADO).length,
-    [tickets]
-  );
-
-  const items = useMemo(
-    () =>
-      tickets.filter(
-        (t) =>
-          t.status !== TicketStatus.CERRADO ||
-          t.tags?.includes(TicketTag.RECORDATORIO)
-      ),
-    [tickets]
-  );
+  const items = useMemo(() => {
+    return tickets.filter((t) => {
+      const isOpen = t.status === TicketStatus.ABIERTO;
+      const isReminder = t.tags?.includes(TicketTag.RECORDATORIO) ?? false;
+      return isOpen || isReminder;
+    });
+  }, [tickets]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -72,11 +70,13 @@ export default function PendingPanel({ tickets }: Props) {
                   RECORDATORIO
                 </span>
               ) : null}
+              {t.status === TicketStatus.ABIERTO ? (
+                <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-100 text-orange-700 border-l-orange-500">
+                  ABIERTO
+                </span>
+              ) : null}
             </div>
 
-            <div className="mt-3 text-sm font-extrabold text-slate-800">
-              {t.operatorLabel}
-            </div>
             <div className="mt-2 text-sm font-bold text-blue-700">
               {t.title}
             </div>
@@ -89,7 +89,10 @@ export default function PendingPanel({ tickets }: Props) {
                 </span>
               </div>
 
-              <button className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+              <button
+                onClick={() => onRequestClose(t)}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+              >
                 Cerrar
               </button>
             </div>

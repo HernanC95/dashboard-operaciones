@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import Modal from "../modal/Modal";
+import { PEOPLE } from "../../constants/people";
+import type { ActorRef } from "../../interfaces/ActorRef";
+import { TicketKind } from "../../interfaces/enums";
 
 type Props = {
   open: boolean;
@@ -8,55 +11,46 @@ type Props = {
 };
 
 export type NewTicketPayload = {
-  category: string;
-  operator: string;
+  ticketKind: TicketKind;
+  operator: ActorRef;
   message: string;
   site?: string;
   isReminder: boolean;
 };
 
-const CATEGORIES = [
-  "Ingreso a Sitio",
-  "Noticia/Aviso",
-  "Proceso Diario",
-  "Estado de Equipos",
-  "Personal en Sala",
-  "Incidente",
-  "Mantenimiento",
-  "Otro",
-] as const;
-
 export default function NewTicketModal({ open, onClose, onCreate }: Props) {
-  const [category, setCategory] =
-    useState<(typeof CATEGORIES)[number]>("Ingreso a Sitio");
-  const [operator, setOperator] = useState("");
+  const [ticketKind, setTicketKind] = useState<TicketKind>(TicketKind.INGRESO);
+  const [operator, setOperator] = useState<ActorRef>(PEOPLE[0]);
   const [message, setMessage] = useState("");
   const [site, setSite] = useState("");
   const [isReminder, setIsReminder] = useState(false);
 
-  const showSite = useMemo(() => category === "Ingreso a Sitio", [category]);
+  const showSite = useMemo(
+    () => ticketKind === TicketKind.INGRESO,
+    [ticketKind]
+  );
 
-  const canSubmit = operator.trim().length > 0 && message.trim().length > 0;
+  const canSubmit = message.trim().length > 0;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
 
     const payload: NewTicketPayload = {
-      category,
-      operator: operator.trim(),
+      ticketKind,
+      operator,
       message: message.trim(),
       site: showSite && site.trim() ? site.trim() : undefined,
       isReminder,
     };
 
     onCreate?.(payload);
+
     onClose();
     // opcional: limpiar
-    setOperator("");
     setMessage("");
     setSite("");
     setIsReminder(false);
-    setCategory("Ingreso a Sitio");
+    setTicketKind(TicketKind.INGRESO);
   };
 
   return (
@@ -67,20 +61,20 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
       maxWidthClassName="max-w-[780px]"
     >
       <div className="space-y-4">
-        {/* Categoría */}
+        {/* TicketKind */}
         <div>
-          <label className="text-sm font-bold text-slate-700">Categoría</label>
+          <label className="text-sm font-bold text-slate-700">Tipo</label>
           <div className="mt-2">
             <select
-              value={category}
-              onChange={(e) =>
-                setCategory(e.target.value as (typeof CATEGORIES)[number])
-              }
+              value={ticketKind}
+              onChange={(e) => {
+                setTicketKind(e.target.value as TicketKind);
+              }}
               className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
             >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {Object.values(TicketKind).map((k) => (
+                <option key={k} value={k}>
+                  {k}
                 </option>
               ))}
             </select>
@@ -90,12 +84,20 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         {/* Operador */}
         <div>
           <label className="text-sm font-bold text-slate-700">Operador</label>
-          <input
-            value={operator}
-            onChange={(e) => setOperator(e.target.value)}
-            placeholder="Nombre del operador"
-            className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
-          />
+          <select
+            value={operator.id}
+            onChange={(e) => {
+              const selected = PEOPLE.find((p) => p.id === e.target.value);
+              if (selected) setOperator(selected);
+            }}
+            className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+          >
+            {PEOPLE.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Mensaje */}

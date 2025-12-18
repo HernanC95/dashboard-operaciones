@@ -2,32 +2,35 @@ import DashboardLayout from "../../components/layout/DashboardLayout";
 import RightActions from "../../components/header/RightActions";
 import PendingPanel from "../../components/PendingPanel/PendingPanel";
 import TicketsList from "../../components/TicketsList/TicketsList";
-import { mockTickets } from "./mocktickets";
-import { TicketStatus } from "../../interfaces/enums";
-import { formatDayHeaderAR, formatYearDay } from "../../utils/date";
-import useModal from "../../hooks/useModal";
 import NewTicketModal from "../../components/tickets/NewTicketModal";
+import CloseTicketModal from "../../components/tickets/CloseTicketModal";
+
+import useModal from "../../hooks/useModal";
+import useTickets from "../../hooks/useTickets";
+
+import { mockTickets } from "./mocktickets";
+import { formatDayHeaderAR, formatYearDay } from "../../utils/date";
+import type { Ticket } from "../../interfaces/Ticket";
+import { useState } from "react";
 
 export default function DashboardPage() {
-  const tickets = mockTickets;
-  const newTicketModal = useModal(false);
-
-  const total = tickets.length;
-  const abiertos = tickets.filter(
-    (t) => t.status !== TicketStatus.CERRADO
-  ).length;
-  const cerrados = tickets.filter(
-    (t) => t.status === TicketStatus.CERRADO
-  ).length;
-
   const now = new Date("2025-12-17T12:00:00");
-  const yearDay = formatYearDay(now).replace("/", ""); // 2025351
+  const yearDay = formatYearDay(now);
+
+  // ✅ estado real
+  const { tickets, counts, createTicket, closeTicket } =
+    useTickets(mockTickets);
+
+  // ✅ modal
+  const newTicketModal = useModal(false);
+  const leftTickets = tickets.filter((t) => t.status === "CERRADO");
+  const closeTicketModal = useModal(false);
+  const [ticketToClose, setTicketToClose] = useState<Ticket | null>(null);
 
   return (
     <DashboardLayout
       left={
         <div className="space-y-5">
-          {/* TITULO + SUBTITULO (izquierda) */}
           <div>
             <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900">
               DEPARTAMENTO OPERACIONES
@@ -37,7 +40,6 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* BARRA DE FECHA (izquierda) */}
           <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
             <div className="text-sm font-bold uppercase tracking-wide text-blue-700">
               {formatDayHeaderAR(now)}
@@ -47,14 +49,13 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* STATS */}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm border-l-4 border-l-blue-500">
               <div className="text-sm font-semibold text-slate-500">
                 Total Registros
               </div>
               <div className="mt-2 text-3xl font-extrabold text-slate-900">
-                {total}
+                {counts.total}
               </div>
             </div>
 
@@ -63,7 +64,7 @@ export default function DashboardPage() {
                 Abiertos Hoy
               </div>
               <div className="mt-2 text-3xl font-extrabold text-slate-900">
-                {abiertos}
+                {counts.abiertos}
               </div>
             </div>
 
@@ -72,57 +73,44 @@ export default function DashboardPage() {
                 Cerrados Hoy
               </div>
               <div className="mt-2 text-3xl font-extrabold text-slate-900">
-                {cerrados}
+                {counts.cerrados}
               </div>
             </div>
           </div>
 
-          {/* FILTROS (igual a tu captura) */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-              <span className="inline-block h-5 w-5 rounded-md border border-slate-300" />
-              Búsqueda y Filtros
-            </div>
+          {/* filtros (si ya los tenés armados, dejalo igual) */}
+          {/* ... */}
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px]">
-              <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-3">
-                <span className="h-4 w-4 rounded-md border border-slate-300" />
-                <input
-                  className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-500 outline-none"
-                  placeholder="Buscar por operador, mensaje, sitio, menciones..."
-                />
-              </div>
-
-              <select className="rounded-xl bg-slate-100 px-3 py-3 text-sm font-semibold text-slate-700 outline-none">
-                <option>Todas las categorías</option>
-              </select>
-
-              <select className="rounded-xl bg-slate-100 px-3 py-3 text-sm font-semibold text-slate-700 outline-none">
-                <option>Todos</option>
-              </select>
-            </div>
-          </div>
-
-          {/* LISTA DE TICKETS */}
-          <TicketsList tickets={tickets} />
+          <TicketsList tickets={leftTickets} />
         </div>
       }
       right={
         <div className="space-y-4">
-          {/* ACCIONES ARRIBA A LA DERECHA */}
           <RightActions dateLabel="17/12/2025" onNew={newTicketModal.open} />
-
+          <PendingPanel
+            tickets={tickets}
+            onRequestClose={(t) => {
+              setTicketToClose(t);
+              closeTicketModal.open();
+            }}
+          />
+          {closeTicketModal.isOpen && ticketToClose ? (
+            <CloseTicketModal
+              key={ticketToClose.id} // 👈 fuerza remount cuando cambia el ticket
+              open={closeTicketModal.isOpen}
+              ticket={ticketToClose}
+              onClose={() => {
+                closeTicketModal.close();
+                setTicketToClose(null);
+              }}
+              onConfirm={(payload) => closeTicket(payload)}
+            />
+          ) : null}
           <NewTicketModal
             open={newTicketModal.isOpen}
             onClose={newTicketModal.close}
-            onCreate={(payload) => {
-              console.log("Crear ticket:", payload);
-              // después lo conectamos al store/services para agregarlo al listado real
-            }}
+            onCreate={(payload) => createTicket(payload)}
           />
-
-          {/* PANEL DE PENDIENTES */}
-          <PendingPanel tickets={tickets} />
         </div>
       }
     />

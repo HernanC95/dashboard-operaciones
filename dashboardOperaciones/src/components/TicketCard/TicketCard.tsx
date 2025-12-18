@@ -9,14 +9,13 @@ function leftBorderByStatus(status: Ticket["status"]) {
       return "border-l-green-500";
     case "ABIERTO":
       return "border-l-orange-500";
-    case "PENDIENTE":
     default:
       return "border-l-blue-500";
   }
 }
 
 function kindChip(kind: Ticket["kind"]) {
-  if (kind === TicketKind.PROCESO_Z15)
+  if (kind === TicketKind.Z15)
     return "bg-green-100 text-green-700 border-green-200";
   if (kind === TicketKind.NOTICIA)
     return "bg-purple-100 text-purple-700 border-purple-200";
@@ -48,11 +47,14 @@ export default function TicketCard({ ticket }: Props) {
         leftBorderByStatus(ticket.status),
       ].join(" ")}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="text-lg font-extrabold text-slate-900">
           {formatTimeAR(ticket.date)} HS
+          {ticket.status === TicketStatus.CERRADO &&
+            ticket.audit.closedBy &&
+            ticket.audit.closedAt &&
+            ` - ${formatTimeAR(ticket.audit.closedAt)} HS`}
         </div>
-
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={[
@@ -88,17 +90,6 @@ export default function TicketCard({ ticket }: Props) {
         </div>
       </div>
 
-      <div className="mt-2 flex items-center gap-2 text-sm font-bold text-slate-600">
-        <span className="inline-block h-4 w-4 rounded-full border border-slate-300" />
-        {ticket.operatorLabel}
-
-        {ticket.kind === TicketKind.INGRESO ? (
-          <span className="ml-2 rounded-full bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">
-            EN SITIO {ticket.site}
-          </span>
-        ) : null}
-      </div>
-
       <p className="mt-3 text-sm font-extrabold text-blue-700">
         {ticket.title}
       </p>
@@ -122,10 +113,6 @@ export default function TicketCard({ ticket }: Props) {
             Cerrado por:{" "}
             <span className="font-semibold text-slate-700">
               {ticket.audit.closedBy.name}
-            </span>{" "}
-            -{" "}
-            <span className="font-semibold text-slate-700">
-              {formatTimeAR(ticket.audit.closedAt)} HS
             </span>
           </div>
         ) : null}

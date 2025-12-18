@@ -1,7 +1,6 @@
 export const TicketStatus = {
   ABIERTO: "ABIERTO",
   CERRADO: "CERRADO",
-  PENDIENTE: "PENDIENTE",
 } as const;
 
 export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
@@ -9,7 +8,7 @@ export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
 export const TicketKind = {
   NOTICIA: "NOTICIA",
   INGRESO: "INGRESO",
-  PROCESO_Z15: "PROCESO_Z15",
+  Z15: "Z15",
 } as const;
 
 export type TicketKind = (typeof TicketKind)[keyof typeof TicketKind];
