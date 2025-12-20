@@ -8,7 +8,6 @@ import CloseTicketModal from "../../components/tickets/CloseTicketModal";
 import useModal from "../../hooks/useModal";
 import useTickets from "../../hooks/useTickets";
 
-import { mockTickets } from "./mocktickets";
 import { formatDayHeaderAR, formatYearDay } from "../../utils/date";
 import type { Ticket } from "../../interfaces/Ticket";
 import { useState } from "react";
@@ -17,9 +16,7 @@ export default function DashboardPage() {
   const now = new Date();
   const yearDay = formatYearDay(now);
 
-  // ✅ estado real
-  const { tickets, counts, createTicket, closeTicket } =
-    useTickets(mockTickets);
+  const { tickets, counts, createTicket, closeTicket } = useTickets();
 
   // ✅ modal
   const newTicketModal = useModal(false);

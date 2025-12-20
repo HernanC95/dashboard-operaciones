@@ -8,7 +8,9 @@ function ensureDate(value: Date) {
 
 export function formatTimeAR(date: Date): string {
   const d = ensureDate(date);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${pad2(
+    d.getHours()
+  )}:${pad2(d.getMinutes())}`;
 }
 
 export function formatDayHeaderAR(date: Date): string {

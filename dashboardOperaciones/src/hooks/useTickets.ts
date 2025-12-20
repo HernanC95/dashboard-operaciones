@@ -1,11 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
-import type {
-  Ticket,
-  TicketIngreso,
-  TicketNoIngreso,
-} from "../interfaces/Ticket";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Ticket } from "../interfaces/Ticket";
 import type { ActorRef } from "../interfaces/ActorRef";
 import { TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
+import { ticketsService } from "../services/tickets.service";
+
+import {
+  apiTicketToTicket,
+  createTicketInputToApiBody,
+  closeTicketInputToApiBody,
+} from "../services/tickets.adapters";
 
 export type CreateTicketInput = {
   ticketKind: TicketKind;
@@ -14,7 +17,6 @@ export type CreateTicketInput = {
   siteId?: string;
   siteLabel?: string;
   isReminder: boolean;
-  createdAt?: Date;
 };
 
 export type CloseTicketInput = {
@@ -32,24 +34,30 @@ type UseTicketsResult = {
     cerrados: number;
     recordatorios: number;
   };
-  createTicket: (input: CreateTicketInput, actor?: ActorRef) => void;
-  closeTicket: (input: CloseTicketInput) => void;
+  createTicket: (input: CreateTicketInput) => Promise<void>;
+  closeTicket: (input: CloseTicketInput) => Promise<void>;
 };
 
-function uid() {
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+export default function useTickets(): UseTicketsResult {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
 
-function extractMentions(text: string): string[] {
-  const matches = text.match(/@([a-zA-Z0-9_]+)/g) ?? [];
-  const names = matches.map((m) => m.slice(1)).filter(Boolean);
-  return Array.from(new Set(names));
-}
+  const fetchTickets = useCallback(async () => {
+    const res = await ticketsService.list({ page: 1, pageSize: 100 });
 
-export default function useTickets(
-  initialTickets: Ticket[] = []
-): UseTicketsResult {
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+    const mapped = res.items.map(apiTicketToTicket);
+    setTickets(mapped);
+  }, []);
+
+  // ✅ FIX warning effect
+  useEffect(() => {
+    (async () => {
+      try {
+        await fetchTickets();
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, [fetchTickets]);
 
   const counts = useMemo(() => {
     const total = tickets.length;
@@ -67,80 +75,24 @@ export default function useTickets(
   }, [tickets]);
 
   const createTicket = useCallback(
-    (input: CreateTicketInput, actor?: ActorRef) => {
-      const createdAt = input.createdAt ?? new Date();
-
-      const mentions = extractMentions(input.message);
-
-      const tags: TicketTag[] = [];
-      if (input.isReminder) tags.push(TicketTag.RECORDATORIO);
-      if (mentions.length > 0) tags.push(TicketTag.MENCIONES);
-
-      const createBy: ActorRef = actor ?? input.operator;
-
-      const common = {
-        id: uid(),
-        date: createdAt,
-        ticketKind: input.ticketKind,
-        operatorLabel: input.operator.name,
-        details: input.message.trim(),
-        status: TicketStatus.ABIERTO,
-        tags: tags.length ? tags : [],
-        mentions,
-        audit: {
-          createdAt,
-          createBy,
-        },
-      };
-
-      const ticket: Ticket =
-        input.ticketKind === TicketKind.INGRESO
-          ? ({
-              ...common,
-              ticketKind: TicketKind.INGRESO,
-              siteId: input.siteId ?? "",
-              siteLabel: input.siteLabel ?? "",
-            } satisfies TicketIngreso)
-          : ({
-              ...common,
-              ticketKind: input.ticketKind as Exclude<
-                TicketKind,
-                typeof TicketKind.INGRESO
-              >,
-            } satisfies TicketNoIngreso);
-
-      setTickets((prev) => [ticket, ...prev]);
+    async (input: CreateTicketInput) => {
+      const body = createTicketInputToApiBody(input);
+      console.log("POST /tickets payload =>", JSON.stringify(body));
+      await ticketsService.create(body);
+      await fetchTickets();
     },
-    []
+    [fetchTickets]
   );
 
-  const closeTicket = useCallback((input: CloseTicketInput) => {
-    const now = new Date();
-    const closedAt = input.closedAt ?? now;
-    const closedBy: ActorRef = input.closedBy;
+  const closeTicket = useCallback(
+    async (input: CloseTicketInput) => {
+      const body = closeTicketInputToApiBody({ closedAt: input.closedAt });
+      await ticketsService.close(input.ticketId, body);
 
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id !== input.ticketId) return t;
-
-        return {
-          ...t,
-          status: TicketStatus.CERRADO,
-          details: input.closeDescription.trim()
-            ? input.closeDescription.trim()
-            : t.details,
-          tags: (t.tags ?? []).filter((tag) => tag !== TicketTag.RECORDATORIO),
-          audit: {
-            ...t.audit,
-            closedAt,
-            closedBy,
-            updatedAt: now,
-            updatedBy: closedBy,
-          },
-        };
-      })
-    );
-  }, []);
+      await fetchTickets();
+    },
+    [fetchTickets]
+  );
 
   return { tickets, counts, createTicket, closeTicket };
 }

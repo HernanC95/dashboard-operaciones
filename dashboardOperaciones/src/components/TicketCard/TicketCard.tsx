@@ -49,11 +49,10 @@ export default function TicketCard({ ticket }: Props) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="text-lg font-extrabold text-slate-900">
-          {formatTimeAR(ticket.date)} HS
-          {ticket.status === TicketStatus.CERRADO &&
-            ticket.audit.closedBy &&
-            ticket.audit.closedAt &&
-            ` - ${formatTimeAR(ticket.audit.closedAt)} HS`}
+          {formatTimeAR(ticket.audit.createdAt)} HS
+          {ticket.status === TicketStatus.CERRADO && ticket.audit.closedAt
+            ? ` - ${formatTimeAR(ticket.audit.closedAt)} HS`
+            : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span
@@ -90,11 +89,6 @@ export default function TicketCard({ ticket }: Props) {
         </div>
       </div>
 
-      {/* <ClampText
-        text={ticket.title}
-        lines={3}
-        className="mt-2 text-sm font-bold text-blue-700"
-      /> */}
       <ClampText
         text={ticket.details}
         lines={3}
