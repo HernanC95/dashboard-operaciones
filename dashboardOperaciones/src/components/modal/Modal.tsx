@@ -35,7 +35,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
     >
@@ -49,23 +49,31 @@ export default function Modal({
           maxWidthClassName,
           "rounded-2xl bg-white shadow-xl",
           "border border-slate-200",
+          // ✅ clave: limitar alto, flex layout y evitar que el footer “se vaya”
+          "max-h-[92vh] flex flex-col overflow-hidden",
         ].join(" ")}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* header */}
-        <div className="flex items-center justify-between px-6 pt-5">
-          <div className="text-lg font-extrabold text-slate-900">{title}</div>
+        {/* header (no scrollea) */}
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6 sm:pt-5 sm:pb-4">
+          <div className="text-base sm:text-lg font-extrabold text-slate-900">
+            {title}
+          </div>
 
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             aria-label="Cerrar"
+            type="button"
           >
             ✕
           </button>
         </div>
 
-        <div className="px-6 pb-6 pt-4">{children}</div>
+        {/* body (scrollea) */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          {children}
+        </div>
       </div>
     </div>
   );

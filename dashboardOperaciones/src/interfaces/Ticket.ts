@@ -1,5 +1,6 @@
+import type { ProcessZ15 } from "./ProcessZ15";
 import type { TicketAudit } from "./TicketAudit";
-import type { TicketKind, TicketStatus, TicketTag } from "./enums";
+import type { Lpar, TicketKind, TicketStatus, TicketTag } from "./enums";
 import { TicketKind as TicketKindValues } from "./enums";
 
 type TicketBase = {
@@ -12,6 +13,9 @@ type TicketBase = {
   tags?: TicketTag[];
   mentions?: string[];
   audit: TicketAudit;
+  process?: ProcessZ15;
+  meta?: TicketMeta;
+  lpar?: Lpar | null;
 };
 
 export type TicketIngreso = TicketBase & {
@@ -27,3 +31,8 @@ export type TicketNoIngreso = TicketBase & {
 };
 
 export type Ticket = TicketIngreso | TicketNoIngreso;
+
+export type TicketMeta = {
+  closeDescription?: string;
+  [k: string]: unknown;
+};

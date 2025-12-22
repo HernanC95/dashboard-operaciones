@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import RightActions from "../../components/header/RightActions";
 import PendingPanel from "../../components/PendingPanel/PendingPanel";
@@ -10,7 +11,42 @@ import useTickets from "../../hooks/useTickets";
 
 import { formatDayHeaderAR, formatYearDay } from "../../utils/date";
 import type { Ticket } from "../../interfaces/Ticket";
-import { useState } from "react";
+import { TicketStatus } from "../../interfaces/enums";
+
+function normalizeText(v: unknown) {
+  return String(v ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function matchesQuery(haystack: string, query: string) {
+  const q = normalizeText(query).trim();
+  if (!q) return true;
+
+  const words = q.split(/\s+/).filter(Boolean);
+  const hay = normalizeText(haystack);
+
+  // AND: todas las palabras deben aparecer
+  return words.every((w) => hay.includes(w));
+}
+
+function getCloseDescription(ticket: Ticket): string {
+  const rootMeta = (ticket.meta ?? {}) as Record<string, unknown>;
+  const processMeta = (ticket.process?.meta ?? {}) as Record<string, unknown>;
+
+  const fromProcess =
+    typeof processMeta.closeDescription === "string"
+      ? processMeta.closeDescription
+      : "";
+
+  const fromRoot =
+    typeof rootMeta.closeDescription === "string"
+      ? rootMeta.closeDescription
+      : "";
+
+  return (fromProcess || fromRoot || "").trim();
+}
 
 export default function DashboardPage() {
   const now = new Date();
@@ -20,9 +56,39 @@ export default function DashboardPage() {
 
   // ✅ modal
   const newTicketModal = useModal(false);
-  const leftTickets = tickets.filter((t) => t.status === "CERRADO");
   const closeTicketModal = useModal(false);
   const [ticketToClose, setTicketToClose] = useState<Ticket | null>(null);
+
+  // ✅ búsqueda tickets cerrados
+  const [closedQuery, setClosedQuery] = useState("");
+
+  const leftTickets = useMemo(() => {
+    // 1) solo cerrados con closedAt
+    const base = tickets
+      .filter((t) => t.status === TicketStatus.CERRADO && !!t.audit.closedAt)
+      .slice()
+      .sort((a, b) => {
+        // 2) orden por hora de cierre DESC (más nuevo arriba)
+        const ta = a.audit.closedAt?.getTime() ?? 0;
+        const tb = b.audit.closedAt?.getTime() ?? 0;
+        return tb - ta;
+      });
+
+    const q = closedQuery.trim();
+    if (!q) return base;
+
+    // 3) filtro por details + closeDescription (case-insensitive + acentos)
+    return base.filter((t) => {
+      const closeDesc = getCloseDescription(t);
+
+      const searchable = [t.details ?? "", closeDesc]
+        .map((s) => String(s ?? "").trim())
+        .filter(Boolean)
+        .join(" ");
+
+      return matchesQuery(searchable, q);
+    });
+  }, [tickets, closedQuery]);
 
   return (
     <DashboardLayout
@@ -75,10 +141,48 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* filtros (si ya los tenés armados, dejalo igual) */}
-          {/* ... */}
+          {/* ✅ Buscador arriba del listado */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-extrabold text-slate-900">
+                  Buscar en tickets cerrados
+                </div>
+                <div className="mt-1 text-sm text-slate-500">
+                  Filtra por palabras en descripción / detalle / cierre.
+                </div>
+              </div>
 
-          <TicketsList tickets={leftTickets} />
+              {closedQuery.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setClosedQuery("")}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Limpiar
+                </button>
+              ) : null}
+            </div>
+
+            <input
+              value={closedQuery}
+              onChange={(e) => setClosedQuery(e.target.value)}
+              placeholder='Ej: "syslog error"'
+              className="mt-3 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+            />
+
+            <div className="mt-2 text-xs text-slate-500">
+              {closedQuery.trim()
+                ? `${leftTickets.length} resultado(s)`
+                : `${leftTickets.length} ticket(s)`}
+            </div>
+          </div>
+
+          <div className="text-lg font-extrabold text-slate-900">
+            Tickets Cerrados
+          </div>
+
+          <TicketsList tickets={leftTickets} searchQuery={closedQuery} />
         </div>
       }
       right={
@@ -91,6 +195,7 @@ export default function DashboardPage() {
               closeTicketModal.open();
             }}
           />
+
           {closeTicketModal.isOpen && ticketToClose ? (
             <CloseTicketModal
               key={ticketToClose.id}
@@ -103,6 +208,7 @@ export default function DashboardPage() {
               onConfirm={(payload) => closeTicket(payload)}
             />
           ) : null}
+
           <NewTicketModal
             open={newTicketModal.isOpen}
             onClose={newTicketModal.close}

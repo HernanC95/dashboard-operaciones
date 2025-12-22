@@ -6,14 +6,32 @@ import type {
 } from "../interfaces/Ticket";
 import type { TicketAudit } from "../interfaces/TicketAudit";
 import type { ActorRef } from "../interfaces/ActorRef";
-import { TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
+import { Lpar, TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
+import type { ProcessZ15 } from "../interfaces/ProcessZ15";
 
 // -------------------------
 // DTOs (lo que viene del back)
 // -------------------------
-// OJO: ticketKind/back NO coincide con TicketKind/front
-export type ApiTicketKind = "INGRESO" | "NO_INGRESO" | (string & {});
+export type ApiTicketKind = "INGRESO" | "Z15" | "NOTICIA" | (string & {});
 export type ApiTicketStatus = "ABIERTO" | "CERRADO" | (string & {});
+
+export type ApiProcessGroup = "PROCESOS_Z15" | (string & {});
+export type ApiProcessType =
+  | "EJECUCION_LARGA"
+  | "EJECUCION_CORTA"
+  | "CONTROL_OPERATIVO"
+  | (string & {});
+export type ApiProcessFrequency =
+  | "DIARIO"
+  | "SEMANAL"
+  | "MENSUAL"
+  | (string & {});
+export type ApiProcessResult = "OK" | "ERROR" | (string & {});
+
+export type ApiTicketCheckpoint = {
+  label: string;
+  at: string; // ISO
+};
 
 export type ApiTicket = {
   id: string;
@@ -30,6 +48,21 @@ export type ApiTicket = {
   createdAt: string; // ISO
   updatedAt: string | null;
   closedAt: string | null;
+
+  closedById: string | null;
+  closedByName: string | null;
+
+  // 🆕 PROCESOS_Z15 (opcionales)
+  processGroup?: ApiProcessGroup | null;
+  processCode?: string | null;
+  processType?: ApiProcessType | null;
+  frequency?: ApiProcessFrequency | null;
+  result?: ApiProcessResult | null;
+  meta?: Record<string, unknown> | null;
+  checkpoints?: ApiTicketCheckpoint[] | null;
+
+  // ✅ NUEVO: LPAR
+  lpar: Lpar | null;
 };
 
 export type ApiListTicketsResponse = {
@@ -50,7 +83,6 @@ function toDate(value: string | Date | null | undefined): Date | undefined {
 
 function actorFromName(name: string | null | undefined): ActorRef {
   const n = (name ?? "Desconocido").trim();
-  // Ajustá si tu ActorRef requiere más campos
   return { id: "unknown", name: n } as ActorRef;
 }
 
@@ -60,24 +92,13 @@ function extractMentions(text: string): string[] {
   return Array.from(new Set(names));
 }
 
-// Back -> Front (kind)
 function mapApiKindToUiKind(apiKind: ApiTicketKind): TicketKind {
-  // Back real: INGRESO | NO_INGRESO
   if (apiKind === "INGRESO") return TicketKind.INGRESO;
-
-  if (apiKind === "NO_INGRESO") {
-    // Elegí default de UI para "no ingreso"
-    return TicketKind.NOTICIA;
-  }
-
-  // Si en el futuro el back agrega algo, no rompas:
   if (apiKind === "Z15") return TicketKind.Z15;
   if (apiKind === "NOTICIA") return TicketKind.NOTICIA;
-
   return TicketKind.NOTICIA;
 }
 
-// Back -> Front (status)
 function mapStatus(apiStatus: ApiTicketStatus): TicketStatus {
   return apiStatus === "CERRADO" ? TicketStatus.CERRADO : TicketStatus.ABIERTO;
 }
@@ -95,6 +116,35 @@ function buildTags(
   return { tags, mentions };
 }
 
+function mapApiProcessToProcessZ15(api: ApiTicket): ProcessZ15 | undefined {
+  if (
+    !api.processGroup ||
+    !api.processCode ||
+    !api.processType ||
+    !api.frequency
+  ) {
+    return undefined;
+  }
+
+  if (api.processGroup !== "PROCESOS_Z15") return undefined;
+
+  const checkpoints =
+    api.checkpoints?.map((c) => ({
+      label: c.label,
+      at: toDate(c.at) ?? new Date(c.at),
+    })) ?? undefined;
+
+  return {
+    group: "PROCESOS_Z15",
+    code: api.processCode as ProcessZ15["code"],
+    type: api.processType as ProcessZ15["type"],
+    frequency: api.frequency as ProcessZ15["frequency"],
+    result: (api.result ?? undefined) as ProcessZ15["result"] | undefined,
+    meta: api.meta ?? undefined,
+    checkpoints,
+  };
+}
+
 // -------------------------
 // Adapter principal: ApiTicket -> Ticket (Front)
 // -------------------------
@@ -105,16 +155,24 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
 
   const ticketKind = mapApiKindToUiKind(api.ticketKind);
   const status = mapStatus(api.status);
-
-  const { tags, mentions } = buildTags(api.message, api.isReminder);
+  const details = api.message;
+  const { tags, mentions } = buildTags(details, api.isReminder);
 
   const audit: TicketAudit = {
     createdAt,
     createBy: actorFromName(api.operatorName),
+
     updatedAt,
-    updatedBy: updatedAt ? actorFromName(api.operatorName) : undefined,
+    updatedBy: undefined,
+
     closedAt,
-    closedBy: undefined,
+    closedBy:
+      api.closedById || api.closedByName
+        ? {
+            id: api.closedById ?? "unknown",
+            name: api.closedByName ?? "Desconocido",
+          }
+        : undefined,
   };
 
   const common = {
@@ -122,11 +180,20 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
     date: createdAt,
     ticketKind,
     operatorLabel: api.operatorName,
-    details: api.message,
+    details,
     status,
     tags,
     mentions,
     audit,
+
+    // ✅ meta root
+    meta: (api.meta ?? undefined) as Record<string, unknown> | undefined,
+
+    // 🆕 PROCESOS_Z15
+    process: mapApiProcessToProcessZ15(api),
+
+    // ✅ LPAR
+    lpar: api.lpar ?? null,
   };
 
   if (ticketKind === TicketKind.INGRESO) {
@@ -152,8 +219,23 @@ export type CreateTicketBody = {
   operatorName: string;
   message: string;
   isReminder: boolean;
-  siteId?: string | null;
-  siteLabel?: string | null;
+  siteId?: string;
+  siteLabel?: string;
+  createdAt?: string;
+
+  // ✅ NUNCA null (Zod enum no lo acepta)
+  lpar?: Lpar;
+
+  // 🆕 PROCESOS_Z15
+  process?: {
+    group: "PROCESOS_Z15";
+    code: string;
+    type: "EJECUCION_LARGA" | "EJECUCION_CORTA" | "CONTROL_OPERATIVO";
+    frequency: "DIARIO" | "SEMANAL" | "MENSUAL";
+    result?: "OK" | "ERROR";
+    meta?: Record<string, unknown>;
+    checkpoints?: { label: string; at: string }[];
+  };
 };
 
 export function createTicketInputToApiBody(input: {
@@ -163,7 +245,12 @@ export function createTicketInputToApiBody(input: {
   isReminder: boolean;
   siteId?: string;
   siteLabel?: string;
-}) {
+  createdAt?: Date;
+
+  // 🆕 Z15
+  process?: ProcessZ15;
+  lpar?: Lpar | null;
+}): CreateTicketBody {
   const body: CreateTicketBody = {
     ticketKind: input.ticketKind,
     operatorName: input.operator.name,
@@ -171,9 +258,38 @@ export function createTicketInputToApiBody(input: {
     isReminder: input.isReminder,
   };
 
+  // INGRESO
   if (input.ticketKind === TicketKind.INGRESO) {
     body.siteId = input.siteId ?? "";
     body.siteLabel = input.siteLabel ?? "";
+  }
+
+  // Fecha manual
+  if (input.createdAt) {
+    body.createdAt = input.createdAt.toISOString();
+  }
+
+  // ✅ Z15
+  if (input.ticketKind === TicketKind.Z15) {
+    // 🔥 FIX: no mandar null (Zod enum lo rechaza)
+    if (input.lpar != null) {
+      body.lpar = input.lpar;
+    }
+
+    if (input.process) {
+      body.process = {
+        group: input.process.group,
+        code: input.process.code,
+        type: input.process.type,
+        frequency: input.process.frequency,
+        result: input.process.result,
+        meta: input.process.meta,
+        checkpoints: input.process.checkpoints?.map((c) => ({
+          label: c.label,
+          at: c.at.toISOString(),
+        })),
+      };
+    }
   }
 
   return body;
@@ -184,12 +300,15 @@ export function createTicketInputToApiBody(input: {
 // -------------------------
 export type CloseTicketBody = {
   closedAt?: string; // ISO
+  closedBy: ActorRef;
 };
 
 export function closeTicketInputToApiBody(input: {
   closedAt?: Date;
+  closedBy: ActorRef;
 }): CloseTicketBody {
   return {
     closedAt: input.closedAt ? input.closedAt.toISOString() : undefined,
+    closedBy: input.closedBy,
   };
 }

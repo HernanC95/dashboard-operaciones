@@ -20,3 +20,10 @@ export const TicketTag = {
 } as const;
 
 export type TicketTag = (typeof TicketTag)[keyof typeof TicketTag];
+
+export enum Lpar {
+  PROD = "PROD",
+  TEST = "TEST",
+  CAPA = "CAPA",
+  INFRA = "INFRA",
+}

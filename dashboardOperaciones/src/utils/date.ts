@@ -8,9 +8,7 @@ function ensureDate(value: Date) {
 
 export function formatTimeAR(date: Date): string {
   const d = ensureDate(date);
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${pad2(
-    d.getHours()
-  )}:${pad2(d.getMinutes())}`;
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 export function formatDayHeaderAR(date: Date): string {
@@ -53,4 +51,13 @@ export function formatYearDay(date: Date): string {
   const doy = Math.floor(diff / oneDay);
   const ddd = doy < 10 ? `00${doy}` : doy < 100 ? `0${doy}` : `${doy}`;
   return `${d.getFullYear()}/${ddd}`;
+}
+
+/** DD/MM/AA (ej: 11/11/25) */
+export function formatDateShortAR(date: Date): string {
+  const d = date.getDate().toString().padStart(2, "0");
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const y = date.getFullYear().toString().slice(-2);
+
+  return `${d}/${m}/${y}`;
 }

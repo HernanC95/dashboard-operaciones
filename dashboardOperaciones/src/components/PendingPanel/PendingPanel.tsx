@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Ticket } from "../../interfaces/Ticket";
 import { TicketKind, TicketStatus, TicketTag } from "../../interfaces/enums";
-import { formatTimeAR } from "../../utils/date";
+import { formatDateShortAR, formatTimeAR } from "../../utils/date";
 import ClampText from "../ui/ClampText";
 
 type Props = {
@@ -76,14 +76,14 @@ export default function PendingPanel({ tickets, onRequestClose }: Props) {
           >
             {t.tags?.includes(TicketTag.RECORDATORIO) ? (
               <span className="inline-flex mb-3 items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
-                RECORDATORIO
+                RECORDATORIO: {formatDateShortAR(t.audit.createdAt)}
               </span>
             ) : (
               <span className="inline-flex mb-3 items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200">
-                ABIERTO
+                ABIERTO: {formatDateShortAR(t.audit.createdAt)}
               </span>
             )}
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-extrabold text-slate-900">
                 {formatTimeAR(t.date)} HS
               </div>
@@ -104,6 +104,16 @@ export default function PendingPanel({ tickets, onRequestClose }: Props) {
                     ].join(" ")}
                   >
                     {t.siteLabel}
+                  </span>
+                ) : null}
+                {t.ticketKind === TicketKind.Z15 && t.lpar ? (
+                  <span
+                    className={[
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
+                      "bg-slate-100 text-slate-800 border-slate-200",
+                    ].join(" ")}
+                  >
+                    {t.lpar}
                   </span>
                 ) : null}
               </div>

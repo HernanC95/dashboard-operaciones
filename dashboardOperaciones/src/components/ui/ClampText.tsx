@@ -1,7 +1,7 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 type Props = {
-  text: string;
+  text: ReactNode;
   lines?: number; // default: 3
   className?: string; // estilos del texto
 };

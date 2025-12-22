@@ -1554,5 +1554,9 @@
   {
     "id": "82091200",
     "nombre": "Ñanducita"
-  }
+  },
+  { "id": "90000001", "nombre": "ASSA Reconquista" },
+  { "id": "90000002", "nombre": "ASSA Santa Fe" },
+  { "id": "90000003", "nombre": "ASSA Rosario" },
+  { "id": "90000004", "nombre": "Bomberos Zona Norte" }
 ]

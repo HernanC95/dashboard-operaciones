@@ -1,14 +1,15 @@
+// src/hooks/useTickets.ts
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Ticket } from "../interfaces/Ticket";
 import type { ActorRef } from "../interfaces/ActorRef";
-import { TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
+import { Lpar, TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
 import { ticketsService } from "../services/tickets.service";
 
 import {
   apiTicketToTicket,
   createTicketInputToApiBody,
-  closeTicketInputToApiBody,
 } from "../services/tickets.adapters";
+import type { ProcessZ15 } from "../interfaces/ProcessZ15";
 
 export type CreateTicketInput = {
   ticketKind: TicketKind;
@@ -17,13 +18,26 @@ export type CreateTicketInput = {
   siteId?: string;
   siteLabel?: string;
   isReminder: boolean;
+  createdAt?: Date;
+  process?: ProcessZ15;
+  lpar?: Lpar | null;
 };
 
 export type CloseTicketInput = {
   ticketId: string;
+
+  // ✅ REQUIRED
   closedBy: ActorRef;
+
   closeDescription: string;
   closedAt?: Date;
+
+  // ✅ Z15: resultado FINAL (solo para procesos largos/control, y cuando aplique)
+  processResult?: "OK" | "ERROR";
+
+  // ✅ patch previo al cierre (PATCH /tickets/:id)
+  processMetaPatch?: Record<string, unknown>;
+  processCheckpointsPatch?: Array<{ label: string; at: string }>;
 };
 
 type UseTicketsResult = {
@@ -38,17 +52,41 @@ type UseTicketsResult = {
   closeTicket: (input: CloseTicketInput) => Promise<void>;
 };
 
+function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
+  const aDate =
+    a.status === TicketStatus.CERRADO && a.audit.closedAt
+      ? a.audit.closedAt
+      : a.audit.createdAt;
+
+  const bDate =
+    b.status === TicketStatus.CERRADO && b.audit.closedAt
+      ? b.audit.closedAt
+      : b.audit.createdAt;
+
+  return bDate.getTime() - aDate.getTime();
+}
+
 export default function useTickets(): UseTicketsResult {
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
   const fetchTickets = useCallback(async () => {
-    const res = await ticketsService.list({ page: 1, pageSize: 100 });
+    // ✅ SOLO HOY (creación o cierre) – lo filtra el BACK
+    const res = await ticketsService.list({
+      page: 1,
+      pageSize: 1000,
+      onlyToday: true,
+      // sort: "activityDesc", // si lo implementaste en el back, perfecto dejarlo.
+    });
 
     const mapped = res.items.map(apiTicketToTicket);
+
+    // ✅ Seguridad extra: ordenamos en front por "actividad más reciente"
+    // (cerrado => closedAt, sino createdAt)
+    mapped.sort(sortTicketsByMostRecentActivityDesc);
+
     setTickets(mapped);
   }, []);
 
-  // ✅ FIX warning effect
   useEffect(() => {
     (async () => {
       try {
@@ -77,7 +115,6 @@ export default function useTickets(): UseTicketsResult {
   const createTicket = useCallback(
     async (input: CreateTicketInput) => {
       const body = createTicketInputToApiBody(input);
-      console.log("POST /tickets payload =>", JSON.stringify(body));
       await ticketsService.create(body);
       await fetchTickets();
     },
@@ -86,8 +123,51 @@ export default function useTickets(): UseTicketsResult {
 
   const closeTicket = useCallback(
     async (input: CloseTicketInput) => {
-      const body = closeTicketInputToApiBody({ closedAt: input.closedAt });
-      await ticketsService.close(input.ticketId, body);
+      if (!input.closedBy) {
+        throw new Error("closeTicket: 'closedBy' es requerido.");
+      }
+
+      const closeDescTrim = (input.closeDescription ?? "").trim();
+
+      const hasMetaPatch =
+        input.processMetaPatch &&
+        Object.keys(input.processMetaPatch).length > 0;
+
+      const hasCheckpointsPatch = Boolean(
+        input.processCheckpointsPatch?.length
+      );
+
+      // ✅ 1) PATCH /tickets/:id SOLO para cosas del proceso (meta/checkpoints/result)
+      // OJO: closeDescription NO lo guardamos acá, porque NOTICIA/INGRESO lo necesitan
+      // y eso va en /close (root).
+      const needsProcessPatch =
+        hasMetaPatch ||
+        hasCheckpointsPatch ||
+        input.processResult !== undefined;
+
+      if (needsProcessPatch) {
+        await ticketsService.update(input.ticketId, {
+          process: {
+            ...(input.processResult !== undefined
+              ? { result: input.processResult }
+              : {}),
+            ...(hasCheckpointsPatch
+              ? { checkpoints: input.processCheckpointsPatch }
+              : {}),
+            ...(hasMetaPatch ? { meta: input.processMetaPatch! } : {}),
+          },
+        });
+      }
+
+      // ✅ 2) PATCH /tickets/:id/close con lo que corresponde al cierre (root)
+      await ticketsService.close(input.ticketId, {
+        closedAt: input.closedAt ? input.closedAt.toISOString() : undefined,
+        closedBy: input.closedBy,
+        ...(closeDescTrim ? { closeDescription: closeDescTrim } : {}),
+        ...(input.processResult !== undefined
+          ? { processResult: input.processResult }
+          : {}),
+      });
 
       await fetchTickets();
     },
