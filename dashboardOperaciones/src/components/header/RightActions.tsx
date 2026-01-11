@@ -1,3 +1,5 @@
+import RunDailyReportButton from "../tickets/RunDailyReportButton";
+
 type Props = {
   onNew: () => void;
 };
@@ -12,6 +14,10 @@ export default function RightActions({ onNew }: Props) {
         <span className="text-lg leading-none">＋</span>
         Nuevo Registro
       </button>
+      <div className="flex items-center justify-between">
+  <h1 className="text-xl font-semibold"></h1>
+  <RunDailyReportButton />
+      </div>
     </div>
   );
 }
