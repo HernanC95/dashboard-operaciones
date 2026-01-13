@@ -67,6 +67,10 @@ function buildDisplayDetails(ticket: Ticket): string {
 
   // ✅ Z15: solo agregamos cosas si está cerrado
   if (!isClosed) return base;
+  const baseAlreadyHasClose =
+    /\[cierre\]/i.test(base) || /resultado final:/i.test(base);
+
+  if (baseAlreadyHasClose) return base;
 
   const code = ticket.process?.code;
   const result = ticket.process?.result; // OK | ERROR

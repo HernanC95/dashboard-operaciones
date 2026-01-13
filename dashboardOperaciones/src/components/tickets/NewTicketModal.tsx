@@ -36,27 +36,37 @@ export type NewTicketPayload = {
   lpar?: Lpar | null;
 };
 
+type Z15TemplateKey =
+  | "OPBSIST_DIARIO"
+  | "OPBRESTO_DIARIO"
+  | "OPBRENT_DIARIO"
+  | "OPBPERS1_DIARIO"
+  | "OPBPERS2_DIARIO"
+  | "OPBSIST_SEMANAL"
+  | "OPBRESTO_SEMANAL"
+  | "OPBRENT_SEMANAL"
+  | "OPBPERS1_SEMANAL"
+  | "OPBPERS2_SEMANAL"
+  | "OPBSIST_MENSUAL"
+  | "OPBRESTO_MENSUAL"
+  | "OPBRENT_MENSUAL"
+  | "OPBPERS1_MENSUAL"
+  | "OPBPERS2_MENSUAL"
+  | "IMS_BACUPSEM_SEMANAL"
+  | "IMS_IMSDASD_SEMANAL"
+  | "IMS_BACUPSEM_MENSUAL"
+  | "IMS_IMSDASD_MENSUAL"
+  | "IMS_IPL"
+  | "OPDELETE"
+  | "MAN_INVERSION"
+  | "RECDAY"
+  | "SYSLOG"
+  | "LOGINS"
+  | "JSFMTSO"
+  | "CONSUMOS"
+  | "FINDEMES";
+
 // type Z15TemplateKey =
-//   | "OPBSIST_DIARIO"
-//   | "OPBRESTO_DIARIO"
-//   | "OPBRENT_DIARIO"
-//   | "OPBPERS1_DIARIO"
-//   | "OPBPERS2_DIARIO"
-//   | "OPBSIST_SEMANAL"
-//   | "OPBRESTO_SEMANAL"
-//   | "OPBRENT_SEMANAL"
-//   | "OPBPERS1_SEMANAL"
-//   | "OPBPERS2_SEMANAL"
-//   | "OPBSIST_MENSUAL"
-//   | "OPBRESTO_MENSUAL"
-//   | "OPBRENT_MENSUAL"
-//   | "OPBPERS1_MENSUAL"
-//   | "OPBPERS2_MENSUAL"
-//   | "IMS_BACUPSEM_SEMANAL"
-//   | "IMS_IMSDASD_SEMANAL"
-//   | "IMS_BACUPSEM_MENSUAL"
-//   | "IMS_IMSDASD_MENSUAL"
-//   | "IMS_IPL"
 //   | "OPDELETE"
 //   | "MAN_INVERSION"
 //   | "RECDAY"
@@ -66,16 +76,6 @@ export type NewTicketPayload = {
 //   | "CONSUMOS"
 //   | "FINDEMES";
 
-type Z15TemplateKey =
-  | "OPDELETE"
-  | "MAN_INVERSION"
-  | "RECDAY"
-  | "SYSLOG"
-  | "LOGINS"
-  | "JSFMTSO"
-  | "CONSUMOS"
-  | "FINDEMES";
-  
 type Z15Template = {
   key: Z15TemplateKey;
   label: string;
@@ -100,190 +100,190 @@ type Z15Template = {
 // -------------------------
 // Helpers templates
 // -------------------------
-// const makeOpb = (args: {
-//   key: Z15TemplateKey;
-//   label: string;
-//   code: Z15ProcessCode;
-//   frequency: ProcessZ15["frequency"];
-// }): Z15Template => ({
-//   key: args.key,
-//   label: args.label,
-//   code: args.code,
-//   type: "EJECUCION_LARGA",
-//   frequency: args.frequency,
-//   needsResult: true,
-//   defaultMessage: ({ result }) =>
-//     result === "ERROR"
-//       ? `${args.code}(${args.frequency.toLowerCase()}): - ERROR AL INICIAR.`
-//       : `${args.code}(${args.frequency.toLowerCase()}): - EN EJECUCIÓN.`,
-// });
+const makeOpb = (args: {
+  key: Z15TemplateKey;
+  label: string;
+  code: Z15ProcessCode;
+  frequency: ProcessZ15["frequency"];
+}): Z15Template => ({
+  key: args.key,
+  label: args.label,
+  code: args.code,
+  type: "EJECUCION_LARGA",
+  frequency: args.frequency,
+  needsResult: true,
+  defaultMessage: ({ result }) =>
+    result === "ERROR"
+      ? `${args.code}(${args.frequency.toLowerCase()}): - ERROR AL INICIAR.`
+      : `${args.code}(${args.frequency.toLowerCase()}): - EN EJECUCIÓN.`,
+});
 
-// const makeImsJob = (args: {
-//   key: Z15TemplateKey;
-//   label: string;
-//   code: Z15ProcessCode; // "BACUPSEM" | "IMSDASD"
-//   frequency: ProcessZ15["frequency"];
-// }): Z15Template => ({
-//   key: args.key,
-//   label: args.label,
-//   code: args.code,
-//   type: "EJECUCION_LARGA",
-//   frequency: args.frequency,
-//   needsResult: true,
-//   defaultMessage: ({ result }) =>
-//     result === "ERROR"
-//       ? `${
-//           args.code
-//         }: Backup IMS (${args.frequency.toLowerCase()}) - ERROR AL INICIAR.`
-//       : `${
-//           args.code
-//         }: Backup IMS (${args.frequency.toLowerCase()}) - EN EJECUCIÓN.`,
-// });
+const makeImsJob = (args: {
+  key: Z15TemplateKey;
+  label: string;
+  code: Z15ProcessCode; // "BACUPSEM" | "IMSDASD"
+  frequency: ProcessZ15["frequency"];
+}): Z15Template => ({
+  key: args.key,
+  label: args.label,
+  code: args.code,
+  type: "EJECUCION_LARGA",
+  frequency: args.frequency,
+  needsResult: true,
+  defaultMessage: ({ result }) =>
+    result === "ERROR"
+      ? `${
+          args.code
+        }: Backup IMS (${args.frequency.toLowerCase()}) - ERROR AL INICIAR.`
+      : `${
+          args.code
+        }: Backup IMS (${args.frequency.toLowerCase()}) - EN EJECUCIÓN.`,
+});
 
-// const makeImsIpl = (): Z15Template => ({
-//   key: "IMS_IPL",
-//   label: "Bajada / Subida IMS (Checkpoint)",
-//   code: "IMS_IPL" as unknown as Z15ProcessCode,
-//   type: "EJECUCION_LARGA",
-//   frequency: "SEMANAL", // interno / DTO
-//   needsResult: true,
+const makeImsIpl = (): Z15Template => ({
+  key: "IMS_IPL",
+  label: "Bajada / Subida IMS (Checkpoint)",
+  code: "IMS_IPL" as unknown as Z15ProcessCode,
+  type: "EJECUCION_LARGA",
+  frequency: "SEMANAL", // interno / DTO
+  needsResult: true,
 
-//   // ✅ SOLO checkpoint
-//   needsImsDownCheckpoint: true,
+  //   // ✅ SOLO checkpoint
+  needsImsDownCheckpoint: true,
 
-//   defaultMessage: ({ result, imsDownCheckpoint }) =>
-//     result === "ERROR"
-//       ? `Bajada/Subida IMS - ERROR AL INICIAR.`
-//       : `Bajada/Subida IMS - Checkpoint DOWN=${
-//           imsDownCheckpoint?.trim() ? imsDownCheckpoint.trim() : "N/A"
-//         }.`,
-// });
+  defaultMessage: ({ result, imsDownCheckpoint }) =>
+    result === "ERROR"
+      ? `Bajada/Subida IMS - ERROR AL INICIAR.`
+      : `Bajada/Subida IMS - Checkpoint DOWN=${
+          imsDownCheckpoint?.trim() ? imsDownCheckpoint.trim() : "N/A"
+        }.`,
+});
 
 const Z15_TEMPLATES: Z15Template[] = [
-  // // DIARIO
-  // makeOpb({
-  //   key: "OPBSIST_DIARIO",
-  //   label: "OPBSIST (Diario)",
-  //   code: "OPBSIST",
-  //   frequency: "DIARIO",
-  // }),
-  // makeOpb({
-  //   key: "OPBRESTO_DIARIO",
-  //   label: "OPBRESTO (Diario)",
-  //   code: "OPBRESTO",
-  //   frequency: "DIARIO",
-  // }),
-  // makeOpb({
-  //   key: "OPBRENT_DIARIO",
-  //   label: "OPBRENT (Diario)",
-  //   code: "OPBRENT",
-  //   frequency: "DIARIO",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS1_DIARIO",
-  //   label: "OPBPERS1 (Diario)",
-  //   code: "OPBPERS1",
-  //   frequency: "DIARIO",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS2_DIARIO",
-  //   label: "OPBPERS2 (Diario)",
-  //   code: "OPBPERS2",
-  //   frequency: "DIARIO",
-  // }),
+  // DIARIO
+  makeOpb({
+    key: "OPBSIST_DIARIO",
+    label: "OPBSIST (Diario)",
+    code: "OPBSIST",
+    frequency: "DIARIO",
+  }),
+  makeOpb({
+    key: "OPBRESTO_DIARIO",
+    label: "OPBRESTO (Diario)",
+    code: "OPBRESTO",
+    frequency: "DIARIO",
+  }),
+  makeOpb({
+    key: "OPBRENT_DIARIO",
+    label: "OPBRENT (Diario)",
+    code: "OPBRENT",
+    frequency: "DIARIO",
+  }),
+  makeOpb({
+    key: "OPBPERS1_DIARIO",
+    label: "OPBPERS1 (Diario)",
+    code: "OPBPERS1",
+    frequency: "DIARIO",
+  }),
+  makeOpb({
+    key: "OPBPERS2_DIARIO",
+    label: "OPBPERS2 (Diario)",
+    code: "OPBPERS2",
+    frequency: "DIARIO",
+  }),
 
-  // // SEMANAL
-  // makeOpb({
-  //   key: "OPBSIST_SEMANAL",
-  //   label: "OPBSIST (Semanal)",
-  //   code: "OPBSIST",
-  //   frequency: "SEMANAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBRESTO_SEMANAL",
-  //   label: "OPBRESTO (Semanal)",
-  //   code: "OPBRESTO",
-  //   frequency: "SEMANAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBRENT_SEMANAL",
-  //   label: "OPBRENT (Semanal)",
-  //   code: "OPBRENT",
-  //   frequency: "SEMANAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS1_SEMANAL",
-  //   label: "OPBPERS1 (Semanal)",
-  //   code: "OPBPERS1",
-  //   frequency: "SEMANAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS2_SEMANAL",
-  //   label: "OPBPERS2 (Semanal)",
-  //   code: "OPBPERS2",
-  //   frequency: "SEMANAL",
-  // }),
+  // SEMANAL
+  makeOpb({
+    key: "OPBSIST_SEMANAL",
+    label: "OPBSIST (Semanal)",
+    code: "OPBSIST",
+    frequency: "SEMANAL",
+  }),
+  makeOpb({
+    key: "OPBRESTO_SEMANAL",
+    label: "OPBRESTO (Semanal)",
+    code: "OPBRESTO",
+    frequency: "SEMANAL",
+  }),
+  makeOpb({
+    key: "OPBRENT_SEMANAL",
+    label: "OPBRENT (Semanal)",
+    code: "OPBRENT",
+    frequency: "SEMANAL",
+  }),
+  makeOpb({
+    key: "OPBPERS1_SEMANAL",
+    label: "OPBPERS1 (Semanal)",
+    code: "OPBPERS1",
+    frequency: "SEMANAL",
+  }),
+  makeOpb({
+    key: "OPBPERS2_SEMANAL",
+    label: "OPBPERS2 (Semanal)",
+    code: "OPBPERS2",
+    frequency: "SEMANAL",
+  }),
 
-  // // MENSUAL
-  // makeOpb({
-  //   key: "OPBSIST_MENSUAL",
-  //   label: "OPBSIST (Mensual)",
-  //   code: "OPBSIST",
-  //   frequency: "MENSUAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBRESTO_MENSUAL",
-  //   label: "OPBRESTO (Mensual)",
-  //   code: "OPBRESTO",
-  //   frequency: "MENSUAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBRENT_MENSUAL",
-  //   label: "OPBRENT (Mensual)",
-  //   code: "OPBRENT",
-  //   frequency: "MENSUAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS1_MENSUAL",
-  //   label: "OPBPERS1 (Mensual)",
-  //   code: "OPBPERS1",
-  //   frequency: "MENSUAL",
-  // }),
-  // makeOpb({
-  //   key: "OPBPERS2_MENSUAL",
-  //   label: "OPBPERS2 (Mensual)",
-  //   code: "OPBPERS2",
-  //   frequency: "MENSUAL",
-  // }),
+  // MENSUAL
+  makeOpb({
+    key: "OPBSIST_MENSUAL",
+    label: "OPBSIST (Mensual)",
+    code: "OPBSIST",
+    frequency: "MENSUAL",
+  }),
+  makeOpb({
+    key: "OPBRESTO_MENSUAL",
+    label: "OPBRESTO (Mensual)",
+    code: "OPBRESTO",
+    frequency: "MENSUAL",
+  }),
+  makeOpb({
+    key: "OPBRENT_MENSUAL",
+    label: "OPBRENT (Mensual)",
+    code: "OPBRENT",
+    frequency: "MENSUAL",
+  }),
+  makeOpb({
+    key: "OPBPERS1_MENSUAL",
+    label: "OPBPERS1 (Mensual)",
+    code: "OPBPERS1",
+    frequency: "MENSUAL",
+  }),
+  makeOpb({
+    key: "OPBPERS2_MENSUAL",
+    label: "OPBPERS2 (Mensual)",
+    code: "OPBPERS2",
+    frequency: "MENSUAL",
+  }),
 
-  // // IMS JOBS
-  // makeImsJob({
-  //   key: "IMS_BACUPSEM_SEMANAL",
-  //   label: "Backup IMS Bacupsem (Semanal)",
-  //   code: "BACUPSEM" as unknown as Z15ProcessCode,
-  //   frequency: "SEMANAL",
-  // }),
-  // makeImsJob({
-  //   key: "IMS_IMSDASD_SEMANAL",
-  //   label: "Backup IMS Imsdasd (Semanal)",
-  //   code: "IMSDASD" as unknown as Z15ProcessCode,
-  //   frequency: "SEMANAL",
-  // }),
-  // makeImsJob({
-  //   key: "IMS_BACUPSEM_MENSUAL",
-  //   label: "Backup IMS Bacupsem (Mensual)",
-  //   code: "BACUPSEM" as unknown as Z15ProcessCode,
-  //   frequency: "MENSUAL",
-  // }),
-  // makeImsJob({
-  //   key: "IMS_IMSDASD_MENSUAL",
-  //   label: "Backup IMS Imsdasd (Mensual)",
-  //   code: "IMSDASD" as unknown as Z15ProcessCode,
-  //   frequency: "MENSUAL",
-  // }),
+  // IMS JOBS
+  makeImsJob({
+    key: "IMS_BACUPSEM_SEMANAL",
+    label: "Backup IMS Bacupsem (Semanal)",
+    code: "BACUPSEM" as unknown as Z15ProcessCode,
+    frequency: "SEMANAL",
+  }),
+  makeImsJob({
+    key: "IMS_IMSDASD_SEMANAL",
+    label: "Backup IMS Imsdasd (Semanal)",
+    code: "IMSDASD" as unknown as Z15ProcessCode,
+    frequency: "SEMANAL",
+  }),
+  makeImsJob({
+    key: "IMS_BACUPSEM_MENSUAL",
+    label: "Backup IMS Bacupsem (Mensual)",
+    code: "BACUPSEM" as unknown as Z15ProcessCode,
+    frequency: "MENSUAL",
+  }),
+  makeImsJob({
+    key: "IMS_IMSDASD_MENSUAL",
+    label: "Backup IMS Imsdasd (Mensual)",
+    code: "IMSDASD" as unknown as Z15ProcessCode,
+    frequency: "MENSUAL",
+  }),
 
   // ✅ IMS_IPL (solo checkpoint DOWN al crear)
-  //makeImsIpl(),
+  makeImsIpl(),
 
   // Cortos / Control / Mensuales
   {
@@ -303,8 +303,7 @@ const Z15_TEMPLATES: Z15Template[] = [
     type: "EJECUCION_CORTA",
     frequency: "DIARIO",
     needsResult: true,
-    defaultMessage: ({ result }) =>
-      `Inversion del MAN: ${result ?? "N/A"}.`,
+    defaultMessage: ({ result }) => `Inversion del MAN: ${result ?? "N/A"}.`,
   },
   {
     key: "RECDAY",
