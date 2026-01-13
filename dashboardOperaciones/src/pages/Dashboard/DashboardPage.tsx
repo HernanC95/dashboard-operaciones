@@ -5,7 +5,7 @@ import PendingPanel from "../../components/PendingPanel/PendingPanel";
 import TicketsList from "../../components/TicketsList/TicketsList";
 import NewTicketModal from "../../components/tickets/NewTicketModal";
 import CloseTicketModal from "../../components/tickets/CloseTicketModal";
-
+import useNow from "../../hooks/useNow";
 import useModal from "../../hooks/useModal";
 import useTickets from "../../hooks/useTickets";
 
@@ -49,8 +49,17 @@ function getCloseDescription(ticket: Ticket): string {
 }
 
 export default function DashboardPage() {
-  const now = new Date();
-  const yearDay = formatYearDay(now);
+  const now = useNow(1000); // actualiza cada 1s
+
+  const yearDay = useMemo(() => formatYearDay(now), [now]);
+  const dayHeader = useMemo(() => formatDayHeaderAR(now), [now]);
+
+  const clock = useMemo(() => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+      now.getSeconds()
+    )}`;
+  }, [now]);
 
   const { tickets, counts, createTicket, closeTicket } = useTickets();
 
@@ -105,8 +114,13 @@ export default function DashboardPage() {
 
           <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
             <div className="text-sm font-bold uppercase tracking-wide text-blue-700">
-              {formatDayHeaderAR(now)}
+              {dayHeader}
             </div>
+
+            <div className="text-sm font-bold uppercase tracking-wide text-blue-700 font-mono">
+              {clock} HS
+            </div>
+
             <div className="text-sm font-bold uppercase tracking-wide text-blue-700">
               AÑO/DÍA: {yearDay}
             </div>
