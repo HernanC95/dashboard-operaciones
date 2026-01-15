@@ -7,14 +7,18 @@ type Props = {
 
 export default function DashboardLayout({ left, right }: Props) {
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
-      <div className="mx-auto max-w-[1400px] px-6 py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-          <main className="min-w-0">{left}</main>
-
-          <aside className="min-w-0">
-            {/* Sidebar sticky como panel derecho */}
-            <div className="sticky top-6 space-y-4">{right}</div>
+    // ✅ Alto fijo + sin scroll del body
+    <div className="h-screen overflow-hidden bg-[#f5f7fb]">
+      {/* ✅ El contenedor también debe ocupar toda la altura */}
+      <div className="mx-auto h-full max-w-[1600px] px-6 py-6">
+        {/* ✅ Grilla a altura completa + min-h-0 para permitir overflow */}
+        <div className="grid h-full min-h-0 grid-cols-1 gap-6 lg:grid-cols-[1fr_460px] xl:grid-cols-[1fr_560px]">
+          {" "}
+          {/* ✅ Columna izquierda scrolleable */}
+          <main className="min-w-0 min-h-0 overflow-y-auto pr-2">{left}</main>
+          {/* ✅ Columna derecha scrolleable */}
+          <aside className="min-w-0 min-h-0 overflow-y-auto pr-2">
+            {right}
           </aside>
         </div>
       </div>

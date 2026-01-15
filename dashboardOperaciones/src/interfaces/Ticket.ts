@@ -5,6 +5,10 @@ import { TicketKind as TicketKindValues } from "./enums";
 
 type TicketBase = {
   id: string;
+
+  // ✅ id numérico para referencia humana
+  publicId: number;
+
   date: Date;
   ticketKind: TicketKind;
   operatorLabel: string;
@@ -16,6 +20,10 @@ type TicketBase = {
   process?: ProcessZ15;
   meta?: TicketMeta;
   lpar?: Lpar | null;
+
+  // ✅ archivado
+  archived: boolean;
+  archivedAt?: Date | null;
 };
 
 export type TicketIngreso = TicketBase & {

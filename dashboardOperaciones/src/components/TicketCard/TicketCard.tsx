@@ -38,15 +38,15 @@ function tagChip(tag: TicketTag) {
 type Props = {
   ticket: Ticket;
   searchQuery?: string;
+
+  // ✅ NUEVO: archivar (soft)
+  onArchive?: (ticketId: string) => void;
 };
 
 function buildDisplayDetails(ticket: Ticket): string {
   const base = (ticket.details ?? "").trim() || "—";
   const isClosed = ticket.status === TicketStatus.CERRADO;
 
-  // ✅ closeDescription puede venir:
-  // - en root meta (NOTICIA / INGRESO)
-  // - en process.meta (Z15)
   const rootMeta = (ticket.meta ?? {}) as Record<string, unknown>;
   const processMeta = (ticket.process?.meta ?? {}) as Record<string, unknown>;
 
@@ -59,13 +59,11 @@ function buildDisplayDetails(ticket: Ticket): string {
       : "")
   ).trim();
 
-  // ✅ NO Z15: si está cerrado, mostrar cierre (y listo)
   if (ticket.ticketKind !== TicketKind.Z15) {
     if (!isClosed || !closeDesc) return base;
     return `${base} [Cierre] ${closeDesc}`;
   }
 
-  // ✅ Z15: solo agregamos cosas si está cerrado
   if (!isClosed) return base;
   const baseAlreadyHasClose =
     /\[cierre\]/i.test(base) || /resultado final:/i.test(base);
@@ -73,30 +71,23 @@ function buildDisplayDetails(ticket: Ticket): string {
   if (baseAlreadyHasClose) return base;
 
   const code = ticket.process?.code;
-  const result = ticket.process?.result; // OK | ERROR
-  const type = ticket.process?.type; // EJECUCION_CORTA | EJECUCION_LARGA | CONTROL_OPERATIVO
+  const result = ticket.process?.result;
+  const type = ticket.process?.type;
 
-  // Si no hay nada que mostrar, devolvemos el base
   if (!result && !closeDesc) return base;
 
-  // ✅ Caso especial: IMS_IPL (sin "Detalle:" y resultado al final)
   if (code === "IMS_IPL") {
     const parts: string[] = [];
-
     if (closeDesc) parts.push(closeDesc);
     if (result) parts.push(`Resultado final: ${result}`);
     return `${base} [Cierre] ${parts.join(" | ")}`;
   }
 
-  // ✅ Procesos cortos (SYSLOG, OPDELETE, etc):
-  // NO agregar "Resultado final" para evitar cierre duplicado,
-  // pero si hay closeDesc, mostrarlo como cierre simple.
   if (type === "EJECUCION_CORTA") {
     if (!closeDesc) return base;
     return `${base} | Cierre: ${closeDesc}`;
   }
 
-  // ✅ Procesos largos / control: cierre completo
   const parts: string[] = [];
   if (result) parts.push(`Resultado final: ${result}`);
   if (closeDesc) parts.push(`Detalle: ${closeDesc}`);
@@ -104,7 +95,7 @@ function buildDisplayDetails(ticket: Ticket): string {
   return `${base} [Cierre] ${parts.join(" | ")}`;
 }
 
-export default function TicketCard({ ticket, searchQuery }: Props) {
+export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
   const displayText = buildDisplayDetails(ticket);
 
   const isClosed =
@@ -121,6 +112,9 @@ export default function TicketCard({ ticket, searchQuery }: Props) {
       createdBy.name.trim().toLowerCase() ===
         (closedBy?.name ?? "").trim().toLowerCase());
 
+  const canArchive =
+    ticket.status === TicketStatus.CERRADO && !ticket.archived && !!onArchive;
+
   return (
     <article
       className={[
@@ -131,27 +125,62 @@ export default function TicketCard({ ticket, searchQuery }: Props) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="text-sm font-extrabold text-slate-900">
-          {(() => {
-            const created = formatDateShortAR(ticket.audit.createdAt);
-            const closed = ticket.audit.closedAt
-              ? formatDateShortAR(ticket.audit.closedAt)
-              : null;
+          {/* ✅ ID visible para referenciar tickets */}
+          <div className="mb-1 flex items-center gap-2">
+            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700">
+              #{ticket.publicId}
+            </span>{" "}
+            {ticket.archived ? (
+              <span className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-extrabold text-slate-600">
+                ARCHIVADO
+              </span>
+            ) : null}
+            {(() => {
+              const created = formatDateShortAR(ticket.audit.createdAt);
+              const closed = ticket.audit.closedAt
+                ? formatDateShortAR(ticket.audit.closedAt)
+                : null;
 
-            if (!closed || created === closed) {
-              return created;
-            }
+              if (!closed || created === closed) return created;
+              return `${created} - ${closed}`;
+            })()}
+          </div>
 
-            return `${created} - ${closed}`;
-          })()}
           <div className="text-lg font-extrabold text-slate-900">
-            {formatTimeAR(ticket.audit.createdAt)} HS
-            {ticket.status === TicketStatus.CERRADO && ticket.audit.closedAt
-              ? ` - ${formatTimeAR(ticket.audit.closedAt)} HS`
-              : null}
+            {(() => {
+              const open = ticket.audit.createdAt;
+              const close =
+                ticket.status === TicketStatus.CERRADO
+                  ? ticket.audit.closedAt
+                  : null;
+
+              const openLabel = `${formatTimeAR(open)} HS`;
+              if (!close) return openLabel;
+
+              // ✅ si la hora/minuto de apertura y cierre es igual, mostrar una sola vez
+              const sameTime =
+                open.getHours() === close.getHours() &&
+                open.getMinutes() === close.getMinutes();
+
+              if (sameTime) return openLabel;
+              return `${openLabel} - ${formatTimeAR(close)} HS`;
+            })()}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {/* ✅ Botón archivar */}
+          {canArchive ? (
+            <button
+              type="button"
+              onClick={() => onArchive(ticket.id)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
+              title="Archivar ticket (no se borra)"
+            >
+              Archivar
+            </button>
+          ) : null}
+
           <span
             className={[
               "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
@@ -183,6 +212,7 @@ export default function TicketCard({ ticket, searchQuery }: Props) {
               {ticket.siteLabel}
             </span>
           ) : null}
+
           {ticket.ticketKind === TicketKind.Z15 && ticket.lpar ? (
             <span
               className={[
@@ -214,7 +244,7 @@ export default function TicketCard({ ticket, searchQuery }: Props) {
           </div>
         ) : samePerson ? (
           <div>
-            Cargado/Cierre:{" "}
+            Carga/Cierre:{" "}
             <span className="font-semibold text-slate-700">
               {createdBy.name}
             </span>

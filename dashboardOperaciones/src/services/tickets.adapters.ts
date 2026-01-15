@@ -35,6 +35,11 @@ export type ApiTicketCheckpoint = {
 
 export type ApiTicket = {
   id: string;
+
+  // ✅ id numérico para referencia humana
+  // (en prod puede venir undefined durante transición si no backfill -> por eso lo hago tolerante abajo)
+  publicId: number;
+
   ticketKind: ApiTicketKind;
   status: ApiTicketStatus;
   message: string;
@@ -61,8 +66,12 @@ export type ApiTicket = {
   meta?: Record<string, unknown> | null;
   checkpoints?: ApiTicketCheckpoint[] | null;
 
-  // ✅ NUEVO: LPAR
+  // ✅ LPAR
   lpar: Lpar | null;
+
+  // ✅ Archivado
+  archived: boolean;
+  archivedAt: string | null;
 };
 
 export type ApiListTicketsResponse = {
@@ -152,6 +161,7 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
   const createdAt = toDate(api.createdAt) ?? new Date();
   const updatedAt = toDate(api.updatedAt);
   const closedAt = toDate(api.closedAt);
+  const archivedAt = toDate(api.archivedAt);
 
   const ticketKind = mapApiKindToUiKind(api.ticketKind);
   const status = mapStatus(api.status);
@@ -177,6 +187,10 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
 
   const common = {
     id: api.id,
+
+    // ✅ id numérico (tolerante por si hay transición en prod)
+    publicId: typeof api.publicId === "number" ? api.publicId : 0,
+
     date: createdAt,
     ticketKind,
     operatorLabel: api.operatorName,
@@ -186,14 +200,18 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
     mentions,
     audit,
 
-    // ✅ meta root
+    // meta root
     meta: (api.meta ?? undefined) as Record<string, unknown> | undefined,
 
-    // 🆕 PROCESOS_Z15
+    // procesos Z15
     process: mapApiProcessToProcessZ15(api),
 
-    // ✅ LPAR
+    // LPAR
     lpar: api.lpar ?? null,
+
+    // ✅ archivado
+    archived: Boolean(api.archived),
+    archivedAt: archivedAt ?? undefined,
   };
 
   if (ticketKind === TicketKind.INGRESO) {
@@ -214,6 +232,7 @@ export function apiTicketToTicket(api: ApiTicket): Ticket {
 // -------------------------
 // Adapter inverso: Front -> Back (POST)
 // -------------------------
+// (sin cambios)
 export type CreateTicketBody = {
   ticketKind: TicketKind;
   operatorName: string;
@@ -223,10 +242,8 @@ export type CreateTicketBody = {
   siteLabel?: string;
   createdAt?: string;
 
-  // ✅ NUNCA null (Zod enum no lo acepta)
   lpar?: Lpar;
 
-  // 🆕 PROCESOS_Z15
   process?: {
     group: "PROCESOS_Z15";
     code: string;
@@ -247,7 +264,6 @@ export function createTicketInputToApiBody(input: {
   siteLabel?: string;
   createdAt?: Date;
 
-  // 🆕 Z15
   process?: ProcessZ15;
   lpar?: Lpar | null;
 }): CreateTicketBody {
@@ -258,20 +274,16 @@ export function createTicketInputToApiBody(input: {
     isReminder: input.isReminder,
   };
 
-  // INGRESO
   if (input.ticketKind === TicketKind.INGRESO) {
     body.siteId = input.siteId ?? "";
     body.siteLabel = input.siteLabel ?? "";
   }
 
-  // Fecha manual
   if (input.createdAt) {
     body.createdAt = input.createdAt.toISOString();
   }
 
-  // ✅ Z15
   if (input.ticketKind === TicketKind.Z15) {
-    // 🔥 FIX: no mandar null (Zod enum lo rechaza)
     if (input.lpar != null) {
       body.lpar = input.lpar;
     }

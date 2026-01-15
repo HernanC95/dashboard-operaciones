@@ -38,6 +38,10 @@ export type UpdateTicketPayload = Partial<{
   ticketKind: TicketKind;
   operatorName: string;
   lpar?: Lpar | null;
+
+  // ✅ ARCHIVE (soft)
+  archived: boolean;
+
   // 🆕 PROCESOS_Z15
   process: Partial<{
     group: "PROCESOS_Z15";
@@ -101,29 +105,24 @@ function toQuery(params: ListTicketsParams) {
 }
 
 function normalizeUpdatePatch(patch: UpdateTicketPayload): UpdateTicketPayload {
-  const cleaned: UpdateTicketPayload = { ...patch };
+  const p = patch;
 
-  // si es undefined, mejor no mandarlo
-  if ("siteId" in cleaned && cleaned.siteId === undefined)
-    delete cleaned.siteId;
-  if ("siteLabel" in cleaned && cleaned.siteLabel === undefined)
-    delete cleaned.siteLabel;
-  if ("message" in cleaned && cleaned.message === undefined)
-    delete cleaned.message;
-  if ("status" in cleaned && cleaned.status === undefined)
-    delete cleaned.status;
-  if ("ticketKind" in cleaned && cleaned.ticketKind === undefined)
-    delete cleaned.ticketKind;
-  if ("operatorName" in cleaned && cleaned.operatorName === undefined)
-    delete cleaned.operatorName;
-  if ("isReminder" in cleaned && cleaned.isReminder === undefined)
-    delete cleaned.isReminder;
+  return {
+    ...(p.message !== undefined ? { message: p.message } : {}),
+    ...(p.status !== undefined ? { status: p.status } : {}),
+    ...(p.siteId !== undefined ? { siteId: p.siteId } : {}),
+    ...(p.siteLabel !== undefined ? { siteLabel: p.siteLabel } : {}),
+    ...(p.isReminder !== undefined ? { isReminder: p.isReminder } : {}),
+    ...(p.ticketKind !== undefined ? { ticketKind: p.ticketKind } : {}),
+    ...(p.operatorName !== undefined ? { operatorName: p.operatorName } : {}),
+    ...(p.lpar !== undefined ? { lpar: p.lpar } : {}),
 
-  // process: si viene undefined, no mandarlo
-  if ("process" in cleaned && cleaned.process === undefined)
-    delete cleaned.process;
+    // ✅ archived (soft)
+    ...(p.archived !== undefined ? { archived: p.archived } : {}),
 
-  return cleaned;
+    // process: si viene undefined, no mandarlo
+    ...(p.process !== undefined ? { process: p.process } : {}),
+  };
 }
 
 function normalizeClosePayload(
@@ -142,7 +141,7 @@ function normalizeClosePayload(
 }
 
 export const ticketsService = {
-  // ✅ LIST devuelve DTO del back (ApiTicket[])
+  // ✅ LIST devuelve DTO del back (ApiTicket[]).
   list: (params: ListTicketsParams = {}) =>
     api.get<ApiListTicketsResponse>(`/tickets${toQuery(params)}`),
 

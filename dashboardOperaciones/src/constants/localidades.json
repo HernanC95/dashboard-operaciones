@@ -524,10 +524,6 @@
     "nombre": "Firmat"
   },
   {
-    "id": "82042120",
-    "nombre": "Firmat"
-  },
-  {
     "id": "82049060",
     "nombre": "Florencia"
   },
@@ -1560,5 +1556,6 @@
   { "id": "90000003", "nombre": "ASSA Rosario" },
   { "id": "90000004", "nombre": "Bomberos Zona Norte" },
   { "id": "90000005", "nombre": "Registro Civil" },
-  { "id": "90000006", "nombre": "Brigada de Explosivos" }
+  { "id": "90000006", "nombre": "Brigada de Explosivos" },
+  { "id": "90000007", "nombre": "ASSA Tanque" }
 ]

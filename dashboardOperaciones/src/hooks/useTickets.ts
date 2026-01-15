@@ -1,10 +1,9 @@
 // src/hooks/useTickets.ts
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Ticket } from "../interfaces/Ticket";
 import type { ActorRef } from "../interfaces/ActorRef";
 import { Lpar, TicketKind, TicketStatus, TicketTag } from "../interfaces/enums";
 import { ticketsService } from "../services/tickets.service";
-
 import {
   apiTicketToTicket,
   createTicketInputToApiBody,
@@ -26,16 +25,11 @@ export type CreateTicketInput = {
 export type CloseTicketInput = {
   ticketId: string;
 
-  // ✅ REQUIRED
   closedBy: ActorRef;
-
   closeDescription: string;
   closedAt?: Date;
 
-  // ✅ Z15: resultado FINAL (solo para procesos largos/control, y cuando aplique)
   processResult?: "OK" | "ERROR";
-
-  // ✅ patch previo al cierre (PATCH /tickets/:id)
   processMetaPatch?: Record<string, unknown>;
   processCheckpointsPatch?: Array<{ label: string; at: string }>;
 };
@@ -50,6 +44,9 @@ type UseTicketsResult = {
   };
   createTicket: (input: CreateTicketInput) => Promise<void>;
   closeTicket: (input: CloseTicketInput) => Promise<void>;
+
+  // ✅ NUEVO
+  archiveTicket: (ticketId: string) => Promise<void>;
 };
 
 function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
@@ -69,32 +66,61 @@ function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
 export default function useTickets(): UseTicketsResult {
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
+  const POLL_MS = 10_000;
+
+  const isFetchingRef = useRef(false);
+  const pollTimerRef = useRef<number | null>(null);
+
   const fetchTickets = useCallback(async () => {
-    // ✅ SOLO HOY (creación o cierre) – lo filtra el BACK
-    const res = await ticketsService.list({
-      page: 1,
-      pageSize: 1000,
-      onlyToday: true,
-      // sort: "activityDesc", // si lo implementaste en el back, perfecto dejarlo.
-    });
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
 
-    const mapped = res.items.map(apiTicketToTicket);
+    try {
+      const res = await ticketsService.list({
+        page: 1,
+        pageSize: 1000,
+        onlyToday: true,
+      });
 
-    // ✅ Seguridad extra: ordenamos en front por "actividad más reciente"
-    // (cerrado => closedAt, sino createdAt)
-    mapped.sort(sortTicketsByMostRecentActivityDesc);
+      const items = Array.isArray(res?.items) ? res.items : [];
+      const mapped = items.map(apiTicketToTicket);
 
-    setTickets(mapped);
+      mapped.sort(sortTicketsByMostRecentActivityDesc);
+      setTickets(mapped);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      isFetchingRef.current = false;
+    }
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        await fetchTickets();
-      } catch (e) {
-        console.error(e);
+    fetchTickets();
+
+    pollTimerRef.current = window.setInterval(() => {
+      fetchTickets();
+    }, POLL_MS);
+
+    return () => {
+      if (pollTimerRef.current) {
+        window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
-    })();
+    };
+  }, [fetchTickets]);
+
+  useEffect(() => {
+    const onFocus = () => fetchTickets();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchTickets]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchTickets();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [fetchTickets]);
 
   const counts = useMemo(() => {
@@ -108,7 +134,6 @@ export default function useTickets(): UseTicketsResult {
     const recordatorios = tickets.filter((t) =>
       t.tags?.includes(TicketTag.RECORDATORIO)
     ).length;
-
     return { total, abiertos, cerrados, recordatorios };
   }, [tickets]);
 
@@ -123,9 +148,8 @@ export default function useTickets(): UseTicketsResult {
 
   const closeTicket = useCallback(
     async (input: CloseTicketInput) => {
-      if (!input.closedBy) {
+      if (!input.closedBy)
         throw new Error("closeTicket: 'closedBy' es requerido.");
-      }
 
       const closeDescTrim = (input.closeDescription ?? "").trim();
 
@@ -137,9 +161,6 @@ export default function useTickets(): UseTicketsResult {
         input.processCheckpointsPatch?.length
       );
 
-      // ✅ 1) PATCH /tickets/:id SOLO para cosas del proceso (meta/checkpoints/result)
-      // OJO: closeDescription NO lo guardamos acá, porque NOTICIA/INGRESO lo necesitan
-      // y eso va en /close (root).
       const needsProcessPatch =
         hasMetaPatch ||
         hasCheckpointsPatch ||
@@ -159,7 +180,6 @@ export default function useTickets(): UseTicketsResult {
         });
       }
 
-      // ✅ 2) PATCH /tickets/:id/close con lo que corresponde al cierre (root)
       await ticketsService.close(input.ticketId, {
         closedAt: input.closedAt ? input.closedAt.toISOString() : undefined,
         closedBy: input.closedBy,
@@ -174,5 +194,17 @@ export default function useTickets(): UseTicketsResult {
     [fetchTickets]
   );
 
-  return { tickets, counts, createTicket, closeTicket };
+  const archiveTicket = useCallback(
+    async (ticketId: string) => {
+      // hardening: si ya está archivado en el estado actual, no pegamos al back
+      const t = tickets.find((x) => x.id === ticketId);
+      if (t?.archived) return;
+
+      await ticketsService.update(ticketId, { archived: true });
+      await fetchTickets();
+    },
+    [fetchTickets, tickets]
+  );
+
+  return { tickets, counts, createTicket, closeTicket, archiveTicket };
 }

@@ -2,8 +2,10 @@ import { useState } from "react";
 import Modal from "../modal/Modal";
 import { ApiError } from "../../services/api";
 import { runDailyReport } from "../../services/reports.service";
-
-export default function RunDailyReportButton() {
+type Props = {
+  className?: string;
+};
+export default function RunDailyReportButton({ className }: Props) {
   const [loading, setLoading] = useState(false);
 
   // Modal state
@@ -41,7 +43,7 @@ export default function RunDailyReportButton() {
         type="button"
         onClick={onClick}
         disabled={loading}
-        className="rounded-md border px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-60"
+        className={className}
       >
         {loading ? "Generando..." : "Generar PDF (día)"}
       </button>
