@@ -7,18 +7,26 @@ import ClampText from "../ui/ClampText";
 type Props = {
   tickets: Ticket[];
   onRequestClose: (ticket: Ticket) => void;
+
+  // 🆕 Nuevo: abre modal de edición en el padre
+  onRequestEdit: (ticket: Ticket) => void;
 };
 
-export default function PendingPanel({ tickets, onRequestClose }: Props) {
+export default function PendingPanel({
+  tickets,
+  onRequestClose,
+  onRequestEdit,
+}: Props) {
   const openCount = useMemo(
     () =>
       tickets.filter(
         (t) =>
           t.status === TicketStatus.ABIERTO &&
-          !t.tags?.includes(TicketTag.RECORDATORIO)
+          !t.tags?.includes(TicketTag.RECORDATORIO),
       ).length,
-    [tickets]
+    [tickets],
   );
+
   function kindChip(kind: TicketKind) {
     if (kind === TicketKind.Z15)
       return "bg-red-100 text-red-700 border-red-200";
@@ -28,11 +36,13 @@ export default function PendingPanel({ tickets, onRequestClose }: Props) {
       return "bg-blue-100 text-blue-700 border-blue-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   }
+
   const remindersCount = useMemo(
     () =>
       tickets.filter((t) => t.tags?.includes(TicketTag.RECORDATORIO)).length,
-    [tickets]
+    [tickets],
   );
+
   const items = useMemo(() => {
     return tickets.filter((t) => {
       const isOpen = t.status === TicketStatus.ABIERTO;
@@ -69,79 +79,100 @@ export default function PendingPanel({ tickets, onRequestClose }: Props) {
       </div>
 
       <div className="space-y-4 px-5 pb-5">
-        {items.map((t) => (
-          <div
-            key={t.id}
-            className="flex flex-col rounded-2xl border border-blue-200 bg-white p-3 shadow-sm"
-          >
-            {t.tags?.includes(TicketTag.RECORDATORIO) ? (
-              <span className="inline-flex mb-3 items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
-                RECORDATORIO: {formatDateShortAR(t.audit.createdAt)}
-              </span>
-            ) : (
-              <span className="inline-flex mb-3 items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200">
-                ABIERTO: {formatDateShortAR(t.audit.createdAt)}
-              </span>
-            )}
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-extrabold text-slate-900">
-                {formatTimeAR(t.date)} HS
-              </div>
-              <div className="flex gap-2">
-                <span
-                  className={[
-                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
-                    kindChip(t.ticketKind),
-                  ].join(" ")}
-                >
-                  {t.ticketKind}
+        {items.map((t) => {
+          const isReminder = t.tags?.includes(TicketTag.RECORDATORIO) ?? false;
+          const canEdit =
+            t.status === TicketStatus.ABIERTO && isReminder === false;
+
+          return (
+            <div
+              key={t.id}
+              className="flex flex-col rounded-2xl border border-blue-200 bg-white p-3 shadow-sm"
+            >
+              {isReminder ? (
+                <span className="inline-flex mb-3 items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
+                  RECORDATORIO: {formatDateShortAR(t.audit.createdAt)}
                 </span>
-                {t.siteLabel ? (
+              ) : (
+                <span className="inline-flex mb-3 items-center rounded-full px-3 py-1 text-xs font-extrabold bg-orange-50 text-orange-700 border border-orange-200">
+                  ABIERTO: {formatDateShortAR(t.audit.createdAt)}
+                </span>
+              )}
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-extrabold text-slate-900">
+                  {formatTimeAR(t.audit.createdAt)} HS
+                </div>
+
+                <div className="flex gap-2">
                   <span
                     className={[
                       "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
                       kindChip(t.ticketKind),
                     ].join(" ")}
                   >
-                    {t.siteLabel}
+                    {t.ticketKind}
                   </span>
-                ) : null}
-                {t.ticketKind === TicketKind.Z15 && t.lpar ? (
-                  <span
-                    className={[
-                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
-                      "bg-slate-100 text-slate-800 border-slate-200",
-                    ].join(" ")}
+
+                  {t.siteLabel ? (
+                    <span
+                      className={[
+                        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
+                        kindChip(t.ticketKind),
+                      ].join(" ")}
+                    >
+                      {t.siteLabel}
+                    </span>
+                  ) : null}
+
+                  {t.ticketKind === TicketKind.Z15 && t.lpar ? (
+                    <span
+                      className={[
+                        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
+                        "bg-slate-100 text-slate-800 border-slate-200",
+                      ].join(" ")}
+                    >
+                      {t.lpar}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              <ClampText
+                text={t.details}
+                lines={3}
+                className="mt-2 text-sm text-slate-700"
+              />
+
+              <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
+                <div>
+                  Cargado por:{" "}
+                  <span className="text-xs font-semibold text-slate-800">
+                    {t.audit.createBy.name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {canEdit ? (
+                    <button
+                      onClick={() => onRequestEdit(t)}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+                    >
+                      Editar
+                    </button>
+                  ) : null}
+
+                  <button
+                    onClick={() => onRequestClose(t)}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
                   >
-                    {t.lpar}
-                  </span>
-                ) : null}
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
-
-            <ClampText
-              text={t.details}
-              lines={3}
-              className="mt-2 text-sm text-slate-700"
-            />
-
-            <div className="mt-4 flex items-center justify-between text-xs text-slate-600">
-              <div>
-                Cargado por:{" "}
-                <span className="text-xs font-semibold text-slate-800">
-                  {t.audit.createBy.name}
-                </span>
-              </div>
-
-              <button
-                onClick={() => onRequestClose(t)}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

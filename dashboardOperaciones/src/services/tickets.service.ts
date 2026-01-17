@@ -1,12 +1,11 @@
 // src/services/tickets.service.ts
 import type { ActorRef } from "../interfaces/ActorRef";
 import type { Lpar, TicketKind } from "../interfaces/enums";
-import { api } from "./api";
+import { api, ApiError } from "./api";
 import type { ApiListTicketsResponse, ApiTicket } from "./tickets.adapters";
 
 export type TicketStatus = "ABIERTO" | "CERRADO";
 
-// ✅ DTO del BACK para crear (lo que tu API espera)
 export type CreateTicketPayload = {
   ticketKind: TicketKind;
   operatorName: string;
@@ -16,7 +15,6 @@ export type CreateTicketPayload = {
   siteLabel?: string;
   createdAt?: string;
   lpar?: Lpar | null;
-  // 🆕 PROCESOS_Z15 (si el front lo manda)
   process?: {
     group: "PROCESOS_Z15";
     code: string;
@@ -28,7 +26,6 @@ export type CreateTicketPayload = {
   };
 };
 
-// ✅ PATCH /tickets/:id (tu backend UpdateTicketDto)
 export type UpdateTicketPayload = Partial<{
   message: string;
   status: TicketStatus;
@@ -39,10 +36,8 @@ export type UpdateTicketPayload = Partial<{
   operatorName: string;
   lpar?: Lpar | null;
 
-  // ✅ ARCHIVE (soft)
   archived: boolean;
 
-  // 🆕 PROCESOS_Z15
   process: Partial<{
     group: "PROCESOS_Z15";
     code: string;
@@ -54,13 +49,9 @@ export type UpdateTicketPayload = Partial<{
   }>;
 }>;
 
-// ✅ /tickets/:id/close (tu backend CloseTicketDto)
-// OJO: en tu Zod CloseTicketDto, closedBy es REQUERIDO
 export type CloseTicketPayload = {
-  closedAt?: string; // ISO opcional
-  closedBy: ActorRef; // {id, name}
-
-  // 🆕 (según tu CloseTicketDto actual)
+  closedAt?: string;
+  closedBy: ActorRef;
   closeDescription?: string;
   processResult?: "OK" | "ERROR";
 };
@@ -73,7 +64,6 @@ export type ListTicketsParams = {
   isReminder?: boolean;
   q?: string;
 
-  // 🆕
   onlyToday?: boolean;
   sort?: "createdAtDesc" | "closedAtDesc";
 };
@@ -90,14 +80,12 @@ function toQuery(params: ListTicketsParams) {
     sp.set("isReminder", String(params.isReminder));
   if (params.q) sp.set("q", params.q);
 
-  // 🆕 filtro "solo hoy" (el back lo interpreta con tzOffsetMinutes)
   if (params.onlyToday) {
     sp.set("onlyToday", "true");
-    const tzOffsetMinutes = -new Date().getTimezoneOffset(); // AR ≈ -180
+    const tzOffsetMinutes = -new Date().getTimezoneOffset();
     sp.set("tzOffsetMinutes", String(tzOffsetMinutes));
   }
 
-  // 🆕 orden
   if (params.sort) sp.set("sort", params.sort);
 
   const qs = sp.toString();
@@ -117,16 +105,13 @@ function normalizeUpdatePatch(patch: UpdateTicketPayload): UpdateTicketPayload {
     ...(p.operatorName !== undefined ? { operatorName: p.operatorName } : {}),
     ...(p.lpar !== undefined ? { lpar: p.lpar } : {}),
 
-    // ✅ archived (soft)
     ...(p.archived !== undefined ? { archived: p.archived } : {}),
-
-    // process: si viene undefined, no mandarlo
     ...(p.process !== undefined ? { process: p.process } : {}),
   };
 }
 
 function normalizeClosePayload(
-  payload: CloseTicketPayload
+  payload: CloseTicketPayload,
 ): CloseTicketPayload {
   const cleaned: CloseTicketPayload = { ...payload };
 
@@ -140,26 +125,65 @@ function normalizeClosePayload(
   return cleaned;
 }
 
+function throwNormalizedApiError(e: unknown): never {
+  if (e instanceof ApiError) {
+    // si el backend mandó { error: "..." }
+    if (
+      typeof e.body === "object" &&
+      e.body !== null &&
+      "error" in e.body &&
+      typeof (e.body as { error?: unknown }).error === "string"
+    ) {
+      const err = new Error((e.body as { error: string }).error) as Error & {
+        status?: number;
+      };
+      err.status = e.status;
+      throw err;
+    }
+
+    // fallback: el mensaje del ApiError (ej: statusText o .message)
+    const err = new Error(e.message) as Error & { status?: number };
+    err.status = e.status;
+    throw err;
+  }
+
+  if (e instanceof Error) throw e;
+  throw new Error("REQUEST_FAILED");
+}
+
 export const ticketsService = {
-  // ✅ LIST devuelve DTO del back (ApiTicket[]).
   list: (params: ListTicketsParams = {}) =>
     api.get<ApiListTicketsResponse>(`/tickets${toQuery(params)}`),
 
-  // ✅ GET devuelve DTO del back
   getById: (id: string) => api.get<ApiTicket>(`/tickets/${id}`),
 
-  // ✅ POST /tickets (CreateTicketDto)
-  create: (payload: CreateTicketPayload) =>
-    api.post<ApiTicket>(`/tickets`, payload),
+  create: async (payload: CreateTicketPayload) => {
+    try {
+      return await api.post<ApiTicket>(`/tickets`, payload);
+    } catch (e: unknown) {
+      throwNormalizedApiError(e);
+    }
+  },
 
-  // ✅ PATCH /tickets/:id (UpdateTicketDto)
-  update: (id: string, patch: UpdateTicketPayload) =>
-    api.patch<ApiTicket>(`/tickets/${id}`, normalizeUpdatePatch(patch)),
+  update: async (id: string, patch: UpdateTicketPayload) => {
+    try {
+      return await api.patch<ApiTicket>(
+        `/tickets/${id}`,
+        normalizeUpdatePatch(patch),
+      );
+    } catch (e: unknown) {
+      throwNormalizedApiError(e);
+    }
+  },
 
-  // ✅ PATCH /tickets/:id/close (CloseTicketDto)
-  close: (id: string, payload: CloseTicketPayload) =>
-    api.patch<ApiTicket>(
-      `/tickets/${id}/close`,
-      normalizeClosePayload(payload)
-    ),
+  close: async (id: string, payload: CloseTicketPayload) => {
+    try {
+      return await api.patch<ApiTicket>(
+        `/tickets/${id}/close`,
+        normalizeClosePayload(payload),
+      );
+    } catch (e: unknown) {
+      throwNormalizedApiError(e);
+    }
+  },
 };

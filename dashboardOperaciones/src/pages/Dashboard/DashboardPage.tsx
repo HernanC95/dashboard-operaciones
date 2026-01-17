@@ -6,6 +6,7 @@ import TicketsList from "../../components/TicketsList/TicketsList";
 import NewTicketModal from "../../components/tickets/NewTicketModal";
 import CloseTicketModal from "../../components/tickets/CloseTicketModal";
 import ArchiveTicketModal from "../../components/tickets/ArchiveTicketModal";
+import EditTicketModal from "../../components/tickets/EditTicketModal";
 import useNow from "../../hooks/useNow";
 import useModal from "../../hooks/useModal";
 import useTickets from "../../hooks/useTickets";
@@ -56,19 +57,30 @@ export default function DashboardPage() {
   const clock = useMemo(() => {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
-      now.getSeconds()
+      now.getSeconds(),
     )}`;
   }, [now]);
 
-  const { tickets, createTicket, closeTicket, archiveTicket } = useTickets();
+  // 🆕 sumamos updateTicketMessage (lo agregamos en useTickets en el próximo paso)
+  const {
+    tickets,
+    createTicket,
+    closeTicket,
+    archiveTicket,
+    updateTicketMessage,
+  } = useTickets();
 
   // ✅ modales
   const newTicketModal = useModal(false);
   const closeTicketModal = useModal(false);
   const archiveTicketModal = useModal(false);
+  const editTicketModal = useModal(false);
 
   const [ticketToClose, setTicketToClose] = useState<Ticket | null>(null);
   const [ticketToArchive, setTicketToArchive] = useState<Ticket | null>(null);
+
+  // 🆕 edición
+  const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
 
   // ✅ búsqueda tickets cerrados
   const [closedQuery, setClosedQuery] = useState("");
@@ -77,7 +89,9 @@ export default function DashboardPage() {
     const base = tickets
       .filter(
         (t) =>
-          t.status === TicketStatus.CERRADO && !!t.audit.closedAt && !t.archived
+          t.status === TicketStatus.CERRADO &&
+          !!t.audit.closedAt &&
+          !t.archived,
       )
       .slice()
       .sort((a, b) => {
@@ -203,8 +217,13 @@ export default function DashboardPage() {
         <div className="flex h-full min-h-0 flex-col">
           <div className="shrink-0 space-y-4">
             <RightActions onNew={newTicketModal.open} />
+
             <PendingPanel
               tickets={tickets}
+              onRequestEdit={(t) => {
+                setTicketToEdit(t);
+                editTicketModal.open();
+              }}
               onRequestClose={(t) => {
                 setTicketToClose(t);
                 closeTicketModal.open();
@@ -213,6 +232,26 @@ export default function DashboardPage() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-2 mt-4" />
+
+          {editTicketModal.isOpen && ticketToEdit ? (
+            <EditTicketModal
+              key={ticketToEdit.id}
+              open={editTicketModal.isOpen}
+              ticket={ticketToEdit}
+              onClose={() => {
+                editTicketModal.close();
+                setTicketToEdit(null);
+              }}
+              onConfirm={async (payload: {
+                ticketId: string;
+                message: string;
+              }) => {
+                await updateTicketMessage(payload.ticketId, payload.message);
+                editTicketModal.close();
+                setTicketToEdit(null);
+              }}
+            />
+          ) : null}
 
           {closeTicketModal.isOpen && ticketToClose ? (
             <CloseTicketModal
@@ -230,7 +269,12 @@ export default function DashboardPage() {
           <NewTicketModal
             open={newTicketModal.isOpen}
             onClose={newTicketModal.close}
-            onCreate={(payload) => createTicket(payload)}
+            onCreate={(payload) =>
+              createTicket({
+                ...payload,
+                createdAt: new Date(now), // ✅ misma fuente que el reloj
+              })
+            }
           />
         </div>
       }

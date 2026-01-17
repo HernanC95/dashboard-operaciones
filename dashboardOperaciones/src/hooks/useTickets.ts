@@ -47,6 +47,9 @@ type UseTicketsResult = {
 
   // ✅ NUEVO
   archiveTicket: (ticketId: string) => Promise<void>;
+
+  // 🆕 Editar descripción
+  updateTicketMessage: (ticketId: string, message: string) => Promise<void>;
 };
 
 function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
@@ -61,6 +64,18 @@ function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
       : b.audit.createdAt;
 
   return bDate.getTime() - aDate.getTime();
+}
+
+function extractErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+
+  // por si ticketsService lanza algo tipo { error: "..." }
+  if (typeof e === "object" && e !== null && "error" in e) {
+    const v = (e as { error?: unknown }).error;
+    if (typeof v === "string") return v;
+  }
+
+  return "Error inesperado.";
 }
 
 export default function useTickets(): UseTicketsResult {
@@ -126,13 +141,13 @@ export default function useTickets(): UseTicketsResult {
   const counts = useMemo(() => {
     const total = tickets.length;
     const cerrados = tickets.filter(
-      (t) => t.status === TicketStatus.CERRADO
+      (t) => t.status === TicketStatus.CERRADO,
     ).length;
     const abiertos = tickets.filter(
-      (t) => t.status === TicketStatus.ABIERTO
+      (t) => t.status === TicketStatus.ABIERTO,
     ).length;
     const recordatorios = tickets.filter((t) =>
-      t.tags?.includes(TicketTag.RECORDATORIO)
+      t.tags?.includes(TicketTag.RECORDATORIO),
     ).length;
     return { total, abiertos, cerrados, recordatorios };
   }, [tickets]);
@@ -143,7 +158,7 @@ export default function useTickets(): UseTicketsResult {
       await ticketsService.create(body);
       await fetchTickets();
     },
-    [fetchTickets]
+    [fetchTickets],
   );
 
   const closeTicket = useCallback(
@@ -158,7 +173,7 @@ export default function useTickets(): UseTicketsResult {
         Object.keys(input.processMetaPatch).length > 0;
 
       const hasCheckpointsPatch = Boolean(
-        input.processCheckpointsPatch?.length
+        input.processCheckpointsPatch?.length,
       );
 
       const needsProcessPatch =
@@ -191,20 +206,61 @@ export default function useTickets(): UseTicketsResult {
 
       await fetchTickets();
     },
-    [fetchTickets]
+    [fetchTickets],
   );
 
   const archiveTicket = useCallback(
     async (ticketId: string) => {
-      // hardening: si ya está archivado en el estado actual, no pegamos al back
       const t = tickets.find((x) => x.id === ticketId);
       if (t?.archived) return;
 
       await ticketsService.update(ticketId, { archived: true });
       await fetchTickets();
     },
-    [fetchTickets, tickets]
+    [fetchTickets, tickets],
   );
 
-  return { tickets, counts, createTicket, closeTicket, archiveTicket };
+  const updateTicketMessage = useCallback(
+    async (ticketId: string, message: string) => {
+      const next = (message ?? "").trim();
+      if (!next) throw new Error("La descripción no puede estar vacía.");
+
+      // ✅ optimista: actualizamos UI al instante
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, details: next } : t)),
+      );
+
+      try {
+        await ticketsService.update(ticketId, { message: next });
+      } catch (e: unknown) {
+        // rollback básico: volvemos a pedir al back
+        await fetchTickets();
+
+        const msg = extractErrorMessage(e);
+
+        // Si el back respondió 409 con "TICKET_CLOSED_NO_MESSAGE_EDIT"
+        // mostramos algo entendible
+        if (msg === "TICKET_CLOSED_NO_MESSAGE_EDIT") {
+          throw new Error(
+            "No se puede editar la descripción de un ticket cerrado.",
+          );
+        }
+
+        throw new Error(msg);
+      }
+
+      // ✅ nos aseguramos de quedar consistentes con lo que devuelve el back
+      await fetchTickets();
+    },
+    [fetchTickets],
+  );
+
+  return {
+    tickets,
+    counts,
+    createTicket,
+    closeTicket,
+    archiveTicket,
+    updateTicketMessage,
+  };
 }

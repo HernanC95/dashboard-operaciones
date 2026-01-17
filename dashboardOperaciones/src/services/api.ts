@@ -15,13 +15,24 @@ export class ApiError extends Error {
   }
 }
 
+function extractMessageFromBody(body: unknown): string | null {
+  if (typeof body === "string") return body;
+
+  if (typeof body === "object" && body !== null && "message" in body) {
+    const msg = (body as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+
+  return null;
+}
+
 async function request<T>(
   path: string,
   options?: {
     method?: HttpMethod;
     body?: unknown;
     headers?: Record<string, string>;
-  }
+  },
 ) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: options?.method ?? "GET",
@@ -34,15 +45,12 @@ async function request<T>(
   });
 
   const contentType = res.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json")
+  const data: unknown = contentType.includes("application/json")
     ? await res.json()
     : await res.text();
 
   if (!res.ok) {
-    const msg =
-      typeof data === "string"
-        ? data
-        : (data as any)?.message ?? res.statusText;
+    const msg = extractMessageFromBody(data) ?? res.statusText;
     throw new ApiError(msg, res.status, data);
   }
 
