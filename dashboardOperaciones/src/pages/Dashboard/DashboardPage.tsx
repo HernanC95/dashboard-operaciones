@@ -272,7 +272,7 @@ export default function DashboardPage() {
             onCreate={(payload) =>
               createTicket({
                 ...payload,
-                createdAt: new Date(now), // ✅ misma fuente que el reloj
+                createdAt: payload.createdAt ?? new Date(now),
               })
             }
           />
