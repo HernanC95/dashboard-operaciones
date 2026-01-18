@@ -81,9 +81,7 @@ export default function PendingPanel({
       <div className="space-y-4 px-5 pb-5">
         {items.map((t) => {
           const isReminder = t.tags?.includes(TicketTag.RECORDATORIO) ?? false;
-          const canEdit =
-            t.status === TicketStatus.ABIERTO && isReminder === false;
-
+          const canEdit = t.status === TicketStatus.ABIERTO;
           return (
             <div
               key={t.id}
