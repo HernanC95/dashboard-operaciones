@@ -8,7 +8,7 @@ import { TicketKind } from "../../interfaces/enums";
 function toLocalDateTimeValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
+    d.getHours(),
   )}:${pad(d.getMinutes())}`;
 }
 
@@ -41,12 +41,12 @@ function CloseTicketForm({
   onClose: () => void;
   onConfirm: (payload: CloseTicketPayload) => void;
 }) {
-  const [closedBy, setClosedBy] = useState<ActorRef>(PEOPLE[0]);
+  const [closedBy, setClosedBy] = useState<ActorRef | null>(null);
   const [closeDescription, setCloseDescription] = useState<string>("");
 
   const [useManualCloseAt, setUseManualCloseAt] = useState(false);
   const [closedAtValue, setClosedAtValue] = useState(() =>
-    toLocalDateTimeValue(new Date())
+    toLocalDateTimeValue(new Date()),
   );
 
   const isZ15 = ticket.ticketKind === TicketKind.Z15;
@@ -77,6 +77,9 @@ function CloseTicketForm({
   const [imsUpCheckpoint, setImsUpCheckpoint] = useState("");
 
   const canSubmit = useMemo(() => {
+    // ✅ operador requerido SIEMPRE
+    if (!closedBy) return false;
+
     // IMS_IPL: siempre requiere checkpoint UP
     if (isImsIpl) return Boolean(imsUpCheckpoint.trim());
 
@@ -84,10 +87,11 @@ function CloseTicketForm({
     if (isShortProcess) return Boolean(closeDescription.trim());
 
     return true;
-  }, [isImsIpl, imsUpCheckpoint, isShortProcess, closeDescription]);
+  }, [closedBy, isImsIpl, imsUpCheckpoint, isShortProcess, closeDescription]);
 
   const handleConfirm = () => {
     if (!canSubmit) return;
+    if (!closedBy) return; // TS guard
 
     const closeDescTrim = closeDescription.trim();
 
@@ -113,6 +117,15 @@ function CloseTicketForm({
     if (isImsIpl) payload.imsUpCheckpoint = imsUpTrim;
 
     onConfirm(payload);
+
+    // ✅ limpiar antes de cerrar (para que al reabrir quede en blanco)
+    setClosedBy(null);
+    setCloseDescription("");
+    setUseManualCloseAt(false);
+    setClosedAtValue(toLocalDateTimeValue(new Date()));
+    setProcessResult("OK");
+    setImsUpCheckpoint("");
+
     onClose();
   };
 
@@ -264,19 +277,29 @@ function CloseTicketForm({
         <label className="text-sm font-bold text-slate-700">Cerrado por</label>
 
         <select
-          value={closedBy.id}
+          value={closedBy?.id ?? ""}
           onChange={(e) => {
-            const selected = PEOPLE.find((p) => p.id === e.target.value);
-            if (selected) setClosedBy(selected);
+            const selected =
+              PEOPLE.find((p) => p.id === e.target.value) ?? null;
+            setClosedBy(selected);
           }}
           className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
         >
+          <option value="" disabled>
+            Seleccionar operador
+          </option>
           {PEOPLE.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
           ))}
         </select>
+
+        {!closedBy ? (
+          <div className="mt-2 text-xs text-slate-500">
+            Debés seleccionar quién realiza el cierre.
+          </div>
+        ) : null}
       </div>
 
       {/* Hora de cierre */}
@@ -319,7 +342,16 @@ function CloseTicketForm({
       {/* Footer */}
       <div className="flex items-center justify-end gap-3 pt-2">
         <button
-          onClick={onClose}
+          onClick={() => {
+            // ✅ limpiar al cancelar (sin useEffect)
+            setClosedBy(null);
+            setCloseDescription("");
+            setUseManualCloseAt(false);
+            setClosedAtValue(toLocalDateTimeValue(new Date()));
+            setProcessResult("OK");
+            setImsUpCheckpoint("");
+            onClose();
+          }}
           className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
         >
           Cancelar
@@ -354,7 +386,10 @@ export default function CloseTicketModal({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        // ✅ no hacemos setState acá (evitamos el warning), el form se resetea por key
+        onClose();
+      }}
       title="Cerrar Ticket"
       maxWidthClassName="max-w-[780px]"
     >

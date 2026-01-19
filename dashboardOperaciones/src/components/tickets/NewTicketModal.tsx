@@ -10,7 +10,7 @@ import type { ProcessZ15, Z15ProcessCode } from "../../interfaces/ProcessZ15";
 function toLocalDateTimeValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
+    d.getHours(),
   )}:${pad(d.getMinutes())}`;
 }
 
@@ -65,16 +65,6 @@ type Z15TemplateKey =
   | "JSFMTSO"
   | "CONSUMOS"
   | "FINDEMES";
-
-// type Z15TemplateKey =
-//   | "OPDELETE"
-//   | "MAN_INVERSION"
-//   | "RECDAY"
-//   | "SYSLOG"
-//   | "LOGINS"
-//   | "JSFMTSO"
-//   | "CONSUMOS"
-//   | "FINDEMES";
 
 type Z15Template = {
   key: Z15TemplateKey;
@@ -148,7 +138,6 @@ const makeImsIpl = (): Z15Template => ({
   frequency: "SEMANAL", // interno / DTO
   needsResult: true,
 
-  //   // ✅ SOLO checkpoint
   needsImsDownCheckpoint: true,
 
   defaultMessage: ({ result, imsDownCheckpoint }) =>
@@ -374,7 +363,10 @@ const isValidSyslogCut = (v: string) => SYSLOG_CUT_RE.test(v.trim());
 
 export default function NewTicketModal({ open, onClose, onCreate }: Props) {
   const [ticketKind, setTicketKind] = useState<TicketKind>(TicketKind.Z15);
-  const [operator, setOperator] = useState<ActorRef>(PEOPLE[0]);
+
+  // ✅ AHORA arranca vacío
+  const [operator, setOperator] = useState<ActorRef | null>(null);
+
   const [message, setMessage] = useState("");
   const [isReminder, setIsReminder] = useState(false);
 
@@ -383,7 +375,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
   // ✅ fecha/hora creación (manual opcional)
   const [useManualDate, setUseManualDate] = useState(false);
   const [createdAtValue, setCreatedAtValue] = useState(() =>
-    toLocalDateTimeValue(new Date())
+    toLocalDateTimeValue(new Date()),
   );
 
   // ✅ LPAR (solo Z15)
@@ -395,7 +387,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
   const z15Template = useMemo(
     () => Z15_TEMPLATES.find((t) => t.key === z15TemplateKey)!,
-    [z15TemplateKey]
+    [z15TemplateKey],
   );
 
   const [z15Result, setZ15Result] = useState<"OK" | "ERROR">("OK");
@@ -409,7 +401,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
   const showSite = useMemo(
     () => ticketKind === TicketKind.INGRESO,
-    [ticketKind]
+    [ticketKind],
   );
 
   const isZ15 = ticketKind === TicketKind.Z15;
@@ -434,6 +426,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
   const effectiveMessage = isZ15 ? z15MessageValue : message;
 
   const canSubmit = useMemo(() => {
+    // ✅ operador requerido siempre
+    if (!operator) return false;
+
     if (ticketKind === TicketKind.INGRESO) {
       return effectiveMessage.trim().length > 0 && localidad !== null;
     }
@@ -460,6 +455,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
     return effectiveMessage.trim().length > 0;
   }, [
+    operator,
     ticketKind,
     effectiveMessage,
     localidad,
@@ -502,6 +498,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
   const handleSubmit = () => {
     if (!canSubmit) return;
 
+    // ✅ TypeScript: a esta altura operator NO puede ser null
+    if (!operator) return;
+
     const payload: NewTicketPayload = {
       ticketKind,
       operator,
@@ -520,6 +519,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
     onClose();
 
     // limpiar
+    setOperator(null);
     setMessage("");
     setIsReminder(false);
     setTicketKind(TicketKind.INGRESO);
@@ -545,7 +545,10 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        setOperator(null);
+        onClose();
+      }}
       title="Nuevo Registro / Ticket"
       maxWidthClassName="max-w-[780px]"
     >
@@ -762,19 +765,26 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         <div>
           <label className="text-sm font-bold text-slate-700">Operador</label>
           <select
-            value={operator.id}
+            value={operator?.id ?? ""}
             onChange={(e) => {
-              const selected = PEOPLE.find((p) => p.id === e.target.value);
-              if (selected) setOperator(selected);
+              const id = e.target.value;
+              const selected = PEOPLE.find((p) => p.id === id) ?? null;
+              setOperator(selected);
             }}
             className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
           >
+            <option value="" disabled>
+              Seleccionar operador
+            </option>
             {PEOPLE.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
+          <div className="mt-2 text-xs text-slate-500">
+            Obligatorio: debés seleccionar un operador.
+          </div>
         </div>
 
         {/* Mensaje (solo no-Z15) */}
