@@ -5,6 +5,7 @@ import { api, ApiError } from "./api";
 import type { ApiListTicketsResponse, ApiTicket } from "./tickets.adapters";
 
 export type TicketStatus = "ABIERTO" | "CERRADO";
+export type ListMode = "NORMAL" | "HISTORY";
 
 export type CreateTicketPayload = {
   ticketKind: TicketKind;
@@ -59,11 +60,22 @@ export type CloseTicketPayload = {
 export type ListTicketsParams = {
   page?: number;
   pageSize?: number;
+
   status?: TicketStatus;
   ticketKind?: TicketKind;
   isReminder?: boolean;
+
+  // ✅ búsqueda global (histórico completo en el back)
   q?: string;
 
+  // ✅ nuevo: NORMAL (default) / HISTORY
+  // - Si q tiene texto, el back ignora el mode y busca en todo el histórico.
+  mode?: ListMode;
+
+  // ✅ nuevo: por defecto el back devuelve archived=false. Esto lo permite overridear.
+  archived?: boolean;
+
+  // (compat: si tu UI los usa hoy, los dejo sin romper)
   onlyToday?: boolean;
   sort?: "createdAtDesc" | "closedAtDesc";
 };
@@ -76,16 +88,32 @@ function toQuery(params: ListTicketsParams) {
 
   if (params.status) sp.set("status", params.status);
   if (params.ticketKind) sp.set("ticketKind", String(params.ticketKind));
-  if (params.isReminder !== undefined)
-    sp.set("isReminder", String(params.isReminder));
-  if (params.q) sp.set("q", params.q);
 
+  // ✅ el backend lo parsea como string ("true"/"false")
+  if (params.isReminder !== undefined) {
+    sp.set("isReminder", params.isReminder ? "true" : "false");
+  }
+
+  // ✅ modo NORMAL/HISTORY (solo importa si NO hay q)
+  if (params.mode) sp.set("mode", params.mode);
+
+  // ✅ archived (si lo mandás, overridea el default del back)
+  if (params.archived !== undefined) {
+    sp.set("archived", params.archived ? "true" : "false");
+  }
+
+  // ✅ búsqueda global: trim
+  const q = (params.q ?? "").trim();
+  if (q) sp.set("q", q);
+
+  // compat
   if (params.onlyToday) {
     sp.set("onlyToday", "true");
     const tzOffsetMinutes = -new Date().getTimezoneOffset();
     sp.set("tzOffsetMinutes", String(tzOffsetMinutes));
   }
 
+  // compat
   if (params.sort) sp.set("sort", params.sort);
 
   const qs = sp.toString();

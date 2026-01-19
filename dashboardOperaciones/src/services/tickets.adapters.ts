@@ -82,6 +82,58 @@ export type ApiListTicketsResponse = {
 };
 
 // -------------------------
+// List params (Front -> Back)
+// -------------------------
+export type ListMode = "NORMAL" | "HISTORY";
+
+export type ListTicketsParams = {
+  page?: number;
+  pageSize?: number;
+
+  status?: "ABIERTO" | "CERRADO";
+  ticketKind?: "INGRESO" | "Z15" | "NOTICIA";
+  isReminder?: boolean;
+
+  // ✅ botones
+  mode?: ListMode; // NORMAL(default) / HISTORY
+
+  // ✅ ver archivados (opcional)
+  archived?: boolean;
+
+  // ✅ búsqueda global
+  q?: string;
+};
+
+export function buildListTicketsQuery(params: ListTicketsParams): string {
+  const sp = new URLSearchParams();
+
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 20;
+
+  sp.set("page", String(page));
+  sp.set("pageSize", String(pageSize));
+
+  if (params.status) sp.set("status", params.status);
+  if (params.ticketKind) sp.set("ticketKind", params.ticketKind);
+
+  if (params.isReminder !== undefined) {
+    sp.set("isReminder", params.isReminder ? "true" : "false");
+  }
+
+  // ✅ modo de listado (solo importa si NO hay q, el back lo ignora cuando hay búsqueda)
+  if (params.mode) sp.set("mode", params.mode);
+
+  if (params.archived !== undefined) {
+    sp.set("archived", params.archived ? "true" : "false");
+  }
+
+  const q = (params.q ?? "").trim();
+  if (q) sp.set("q", q);
+
+  return sp.toString();
+}
+
+// -------------------------
 // Helpers
 // -------------------------
 function toDate(value: string | Date | null | undefined): Date | undefined {
@@ -114,7 +166,7 @@ function mapStatus(apiStatus: ApiTicketStatus): TicketStatus {
 
 function buildTags(
   message: string,
-  isReminder: boolean
+  isReminder: boolean,
 ): { tags: TicketTag[]; mentions: string[] } {
   const mentions = extractMentions(message);
 
