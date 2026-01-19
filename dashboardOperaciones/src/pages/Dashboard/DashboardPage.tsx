@@ -1,4 +1,4 @@
-// src/pages/dashboard/DashboardPage.tsx (o la ruta que corresponda)
+// src/pages/dashboard/DashboardPage.tsx
 import { useMemo, useState } from "react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import RightActions from "../../components/header/RightActions";
@@ -63,23 +63,28 @@ export default function DashboardPage() {
   }, [now]);
 
   const {
+    // ✅ lista principal (cerrados paginados)
     tickets,
-    createTicket,
-    closeTicket,
-    archiveTicket,
-    updateTicketMessage,
 
-    // ✅ nuevos para infinite scroll / modo / búsqueda global
-    mode,
+    // ✅ pendientes (abiertos + recordatorios)
+    pendingTickets,
+
+    // ✅ búsqueda global
     query,
     setQuery,
     clearQuery,
-    enableHistory,
-    resetToNormal,
+
+    // ✅ infinite scroll
     loadMore,
     hasMore,
     isLoading,
     error,
+
+    // ✅ acciones
+    createTicket,
+    closeTicket,
+    archiveTicket,
+    updateTicketMessage,
   } = useTickets();
 
   // ✅ modales
@@ -95,12 +100,11 @@ export default function DashboardPage() {
   const [ticketToEdit, setTicketToEdit] = useState<Ticket | null>(null);
 
   // ✅ búsqueda tickets cerrados (global)
-  // - Ahora se conecta al back vía useTickets (q), para buscar en TODO el histórico.
   const closedQuery = query;
 
   const leftTickets = useMemo(() => {
-    // ✅ el hook ya trae un subset (NORMAL=últimos 7 días / HISTORY / SEARCH)
-    // acá solo filtramos cerrados + no archivados
+    // ✅ el hook ya trae SOLO cerrados (status=CERRADO) y paginados,
+    // pero mantenemos el filtro por seguridad y para el caso de archivados
     const base = tickets
       .filter(
         (t) =>
@@ -115,9 +119,7 @@ export default function DashboardPage() {
         return tb - ta;
       });
 
-    // ✅ fallback: si querés que el filtro local siga funcionando incluso con resultados del back
-    // (por ejemplo, porque en back hoy solo busca en message/operator/siteLabel),
-    // mantenemos este refinamiento local adicional.
+    // ✅ refinamiento local: incluye detalle/cierre (porque el back hoy busca principalmente en message)
     const q = closedQuery.trim();
     if (!q) return base;
 
@@ -132,8 +134,6 @@ export default function DashboardPage() {
       return matchesQuery(searchable, q);
     });
   }, [tickets, closedQuery]);
-
-  const showHistoryButtons = closedQuery.trim().length === 0;
 
   return (
     <DashboardLayout
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                     onClick={clearQuery}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    Limpiar
+                    Volver a últimos 7 días
                   </button>
                 ) : null}
               </div>
@@ -206,39 +206,11 @@ export default function DashboardPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-lg font-extrabold text-slate-900">
-                Tickets Cerrados
-              </div>
-
-              {/* ✅ Botones para histórico (solo si NO hay búsqueda) */}
-              {showHistoryButtons ? (
-                <div className="flex items-center gap-2">
-                  {mode !== "HISTORY" ? (
-                    <button
-                      type="button"
-                      onClick={enableHistory}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      disabled={isLoading}
-                    >
-                      Cargar semanas anteriores
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={resetToNormal}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      disabled={isLoading}
-                    >
-                      Volver a últimos 7 días
-                    </button>
-                  )}
-                </div>
-              ) : null}
+            <div className="text-lg font-extrabold text-slate-900">
+              Tickets Cerrados
             </div>
           </div>
 
-          {/* ✅ Lista + infinite scroll + modal confirmación */}
           <TicketsList
             tickets={leftTickets}
             searchQuery={closedQuery}
@@ -276,7 +248,7 @@ export default function DashboardPage() {
             <RightActions onNew={newTicketModal.open} />
 
             <PendingPanel
-              tickets={tickets}
+              tickets={pendingTickets}
               onRequestEdit={(t) => {
                 setTicketToEdit(t);
                 editTicketModal.open();

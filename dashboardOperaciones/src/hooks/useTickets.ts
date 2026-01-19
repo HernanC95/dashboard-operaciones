@@ -34,13 +34,14 @@ export type CloseTicketInput = {
   processCheckpointsPatch?: Array<{ label: string; at: string }>;
 };
 
-export type TicketsListMode = "NORMAL" | "HISTORY";
-
 type UseTicketsResult = {
-  // ✅ lista actual renderizable (depende de mode/q + paginado)
+  // ✅ lista principal (para render de cerrados)
   tickets: Ticket[];
 
-  // ✅ info para infinite scroll
+  // ✅ panel de pendientes (abiertos + recordatorios)
+  pendingTickets: Ticket[];
+
+  // ✅ infinite scroll
   page: number;
   pageSize: number;
   total: number;
@@ -48,20 +49,14 @@ type UseTicketsResult = {
   isLoading: boolean;
   error: string | null;
 
-  // ✅ control de vista
-  mode: TicketsListMode;
+  // ✅ búsqueda global (histórico completo)
   query: string;
-
-  enableHistory: () => void;
-  resetToNormal: () => void;
-
   setQuery: (q: string) => void;
   clearQuery: () => void;
 
   loadMore: () => void;
   refresh: () => void;
 
-  // ✅ contadores de lo que está cargado (no del histórico total)
   counts: {
     total: number;
     abiertos: number;
@@ -71,7 +66,6 @@ type UseTicketsResult = {
 
   createTicket: (input: CreateTicketInput) => Promise<void>;
   closeTicket: (input: CloseTicketInput) => Promise<void>;
-
   archiveTicket: (ticketId: string) => Promise<void>;
   updateTicketMessage: (ticketId: string, message: string) => Promise<void>;
 };
@@ -93,7 +87,6 @@ function sortTicketsByMostRecentActivityDesc(a: Ticket, b: Ticket) {
 function extractErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
 
-  // por si ticketsService lanza algo tipo { error: "..." }
   if (typeof e === "object" && e !== null && "error" in e) {
     const v = (e as { error?: unknown }).error;
     if (typeof v === "string") return v;
@@ -114,39 +107,45 @@ function uniqByIdAppend(prev: Ticket[], next: Ticket[]) {
 }
 
 export default function useTickets(): UseTicketsResult {
+  // ✅ lista principal: cerrados (paginados)
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
-  // ✅ modo/listado
-  const [mode, setMode] = useState<TicketsListMode>("NORMAL");
+  // ✅ pendientes: abiertos + recordatorios (no paginados)
+  const [pendingTickets, setPendingTickets] = useState<Ticket[]>([]);
 
-  // ✅ búsqueda global (histórico completo en backend cuando hay q)
+  // ✅ búsqueda global
   const [query, setQueryState] = useState("");
 
-  // ✅ paginado para infinite scroll
+  // ✅ paginado
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(30); // ajustable (20/30/50). 30 suele ir bien.
+  const [pageSize] = useState(30);
   const [total, setTotal] = useState(0);
 
-  // ✅ estado request
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasMore = tickets.length < total;
 
-  // control anti-race / anti doble fetch
   const fetchSeqRef = useRef(0);
 
   const POLL_MS = 10_000;
   const pollTimerRef = useRef<number | null>(null);
 
-  const fetchTicketsPage = useCallback(
+  /**
+   * Fetch paginado para la lista principal:
+   * - Si hay query => búsqueda global histórica.
+   * - Si no hay query => NORMAL (últimos 7 días + failsafe de ABIERTO)
+   *
+   * IMPORTANTÍSIMO:
+   * Para que en la izquierda no se “cuelen” abiertos al scrollear,
+   * pedimos SOLO status=CERRADO acá.
+   */
+  const fetchClosedPage = useCallback(
     async (opts?: { reset?: boolean; nextPage?: number }) => {
       const reset = Boolean(opts?.reset);
       const nextPage = opts?.nextPage ?? (reset ? 1 : page);
 
-      // anti race: secuencia incremental
       const seq = ++fetchSeqRef.current;
-
       setIsLoading(true);
       setError(null);
 
@@ -157,13 +156,14 @@ export default function useTickets(): UseTicketsResult {
         const res = await ticketsService.list({
           page: nextPage,
           pageSize,
-          // si hay búsqueda => histórico completo; el backend ignora mode en ese caso
+
+          // ✅ lista principal: solo cerrados (evita “abiertos que aparecen al scrollear”)
+          status: "CERRADO",
+
           q: isSearch ? qTrim : undefined,
-          // si no hay búsqueda, controlamos NORMAL/HISTORY
-          mode: isSearch ? undefined : mode,
+          // si no hay búsqueda, el back aplica NORMAL por default (últimos 7 + failsafe)
         });
 
-        // si entró una request más nueva, ignoramos esta respuesta
         if (seq !== fetchSeqRef.current) return;
 
         const items = Array.isArray(res?.items) ? res.items : [];
@@ -187,20 +187,71 @@ export default function useTickets(): UseTicketsResult {
         if (seq === fetchSeqRef.current) setIsLoading(false);
       }
     },
-    [mode, page, pageSize, query],
+    [page, pageSize, query],
   );
 
-  // ✅ reset & fetch cuando cambia mode o query
-  useEffect(() => {
-    // cada vez que cambie la “vista”, reseteamos a página 1
-    fetchTicketsPage({ reset: true, nextPage: 1 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, query, pageSize]);
+  /**
+   * Fetch liviano para PendingPanel:
+   * - Siempre trae pocos
+   * - Siempre incluye ABIERTO + RECORDATORIOS (sin depender del scroll de cerrados)
+   */
+  const fetchPending = useCallback(async () => {
+    try {
+      // Traemos:
+      // - abiertos (cualquier fecha)
+      // - recordatorios (cualquier fecha)
+      //
+      // Como el back no soporta OR combinando status+isReminder desde query params,
+      // hacemos 2 requests y unimos (son pocas).
+      const [openRes, remRes] = await Promise.all([
+        ticketsService.list({
+          page: 1,
+          pageSize: 200,
+          status: "ABIERTO",
+        }),
+        ticketsService.list({
+          page: 1,
+          pageSize: 200,
+          isReminder: true,
+        }),
+      ]);
 
-  // ✅ Poll solo en vista “liviana”: NORMAL + sin búsqueda
+      const openItems = Array.isArray(openRes?.items) ? openRes.items : [];
+      const remItems = Array.isArray(remRes?.items) ? remRes.items : [];
+
+      const mergedApi = [...openItems, ...remItems];
+
+      const seen = new Set<string>();
+      const merged: Ticket[] = [];
+      for (const it of mergedApi) {
+        if (!it?.id) continue;
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        merged.push(apiTicketToTicket(it));
+      }
+
+      merged.sort(sortTicketsByMostRecentActivityDesc);
+      setPendingTickets(merged);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // ✅ cuando cambia query => reset a page 1
+  useEffect(() => {
+    fetchClosedPage({ reset: true, nextPage: 1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, pageSize]);
+
+  // ✅ pending siempre se refresca
+  useEffect(() => {
+    fetchPending();
+  }, [fetchPending]);
+
+  // ✅ Poll: solo cuando NO hay búsqueda (vista normal)
   useEffect(() => {
     const qTrim = query.trim();
-    const shouldPoll = mode === "NORMAL" && qTrim.length === 0;
+    const shouldPoll = qTrim.length === 0;
 
     if (!shouldPoll) {
       if (pollTimerRef.current) {
@@ -210,9 +261,9 @@ export default function useTickets(): UseTicketsResult {
       return;
     }
 
-    // Poll: refresca solo la primera página (sin acumular histórico)
     pollTimerRef.current = window.setInterval(() => {
-      fetchTicketsPage({ reset: true, nextPage: 1 });
+      fetchClosedPage({ reset: true, nextPage: 1 });
+      fetchPending();
     }, POLL_MS);
 
     return () => {
@@ -221,63 +272,30 @@ export default function useTickets(): UseTicketsResult {
         pollTimerRef.current = null;
       }
     };
-  }, [fetchTicketsPage, mode, query]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      // mismo criterio que poll: refrescar solo la primera página
-      const qTrim = query.trim();
-      if (mode === "NORMAL" && qTrim.length === 0) {
-        fetchTicketsPage({ reset: true, nextPage: 1 });
-      }
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [fetchTicketsPage, mode, query]);
-
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState !== "visible") return;
-      const qTrim = query.trim();
-      if (mode === "NORMAL" && qTrim.length === 0) {
-        fetchTicketsPage({ reset: true, nextPage: 1 });
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [fetchTicketsPage, mode, query]);
+  }, [fetchClosedPage, fetchPending, query]);
 
   const counts = useMemo(() => {
-    const totalLocal = tickets.length;
+    const totalLocal = pendingTickets.length + tickets.length;
+
+    const abiertos = pendingTickets.filter(
+      (t) => t.status === TicketStatus.ABIERTO,
+    ).length;
+
+    const recordatorios = pendingTickets.filter((t) =>
+      t.tags?.includes(TicketTag.RECORDATORIO),
+    ).length;
+
     const cerrados = tickets.filter(
       (t) => t.status === TicketStatus.CERRADO,
     ).length;
-    const abiertos = tickets.filter(
-      (t) => t.status === TicketStatus.ABIERTO,
-    ).length;
-    const recordatorios = tickets.filter((t) =>
-      t.tags?.includes(TicketTag.RECORDATORIO),
-    ).length;
+
     return {
       total: totalLocal,
       abiertos,
       cerrados,
       recordatorios,
     };
-  }, [tickets]);
-
-  // -------------------------
-  // Controles de vista
-  // -------------------------
-  const enableHistory = useCallback(() => {
-    setMode("HISTORY");
-    // no hace falta tocar page: el effect de mode resetea y pide page 1
-  }, []);
-
-  const resetToNormal = useCallback(() => {
-    setMode("NORMAL");
-    setQueryState("");
-  }, []);
+  }, [pendingTickets, tickets]);
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q);
@@ -285,8 +303,6 @@ export default function useTickets(): UseTicketsResult {
 
   const clearQuery = useCallback(() => {
     setQueryState("");
-    // al limpiar búsqueda, volvemos a NORMAL (últimos 7 días)
-    setMode("NORMAL");
   }, []);
 
   const loadMore = useCallback(() => {
@@ -294,24 +310,24 @@ export default function useTickets(): UseTicketsResult {
     if (!hasMore) return;
 
     const next = page + 1;
-    fetchTicketsPage({ reset: false, nextPage: next });
-  }, [fetchTicketsPage, hasMore, isLoading, page]);
+    fetchClosedPage({ reset: false, nextPage: next });
+  }, [fetchClosedPage, hasMore, isLoading, page]);
 
   const refresh = useCallback(() => {
-    fetchTicketsPage({ reset: true, nextPage: 1 });
-  }, [fetchTicketsPage]);
+    fetchClosedPage({ reset: true, nextPage: 1 });
+    fetchPending();
+  }, [fetchClosedPage, fetchPending]);
 
   // -------------------------
   // Acciones (CRUD)
-  // - Después de cada acción refrescamos la vista actual (page 1)
   // -------------------------
   const createTicket = useCallback(
     async (input: CreateTicketInput) => {
       const body = createTicketInputToApiBody(input);
       await ticketsService.create(body);
-      await fetchTicketsPage({ reset: true, nextPage: 1 });
+      await refresh();
     },
-    [fetchTicketsPage],
+    [refresh],
   );
 
   const closeTicket = useCallback(
@@ -357,20 +373,17 @@ export default function useTickets(): UseTicketsResult {
           : {}),
       });
 
-      await fetchTicketsPage({ reset: true, nextPage: 1 });
+      await refresh();
     },
-    [fetchTicketsPage],
+    [refresh],
   );
 
   const archiveTicket = useCallback(
     async (ticketId: string) => {
-      const t = tickets.find((x) => x.id === ticketId);
-      if (t?.archived) return;
-
       await ticketsService.update(ticketId, { archived: true });
-      await fetchTicketsPage({ reset: true, nextPage: 1 });
+      await refresh();
     },
-    [fetchTicketsPage, tickets],
+    [refresh],
   );
 
   const updateTicketMessage = useCallback(
@@ -378,7 +391,7 @@ export default function useTickets(): UseTicketsResult {
       const next = (message ?? "").trim();
       if (!next) throw new Error("La descripción no puede estar vacía.");
 
-      // ✅ optimista: actualizamos UI al instante
+      // optimista (solo en cerrados list)
       setTickets((prev) =>
         prev.map((t) => (t.id === ticketId ? { ...t, details: next } : t)),
       );
@@ -386,28 +399,25 @@ export default function useTickets(): UseTicketsResult {
       try {
         await ticketsService.update(ticketId, { message: next });
       } catch (e: unknown) {
-        // rollback: refrescamos
-        await fetchTicketsPage({ reset: true, nextPage: 1 });
+        await refresh();
 
         const msg = extractErrorMessage(e);
-
         if (msg === "TICKET_CLOSED_NO_MESSAGE_EDIT") {
           throw new Error(
             "No se puede editar la descripción de un ticket cerrado.",
           );
         }
-
         throw new Error(msg);
       }
 
-      // ✅ consistencia final
-      await fetchTicketsPage({ reset: true, nextPage: 1 });
+      await refresh();
     },
-    [fetchTicketsPage],
+    [refresh],
   );
 
   return {
     tickets,
+    pendingTickets,
 
     page,
     pageSize,
@@ -416,12 +426,7 @@ export default function useTickets(): UseTicketsResult {
     isLoading,
     error,
 
-    mode,
     query,
-
-    enableHistory,
-    resetToNormal,
-
     setQuery,
     clearQuery,
 
