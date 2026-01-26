@@ -1557,5 +1557,9 @@
   { "id": "90000004", "nombre": "Bomberos Zona Norte" },
   { "id": "90000005", "nombre": "Registro Civil" },
   { "id": "90000006", "nombre": "Brigada de Explosivos" },
-  { "id": "90000007", "nombre": "ASSA Tanque" }
+  { "id": "90000007", "nombre": "ASSA Tanque" },
+  {
+    "id": "90000008",
+    "nombre": "Fisherton"
+  }
 ]

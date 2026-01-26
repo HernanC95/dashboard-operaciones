@@ -8,46 +8,13 @@ import NewTicketModal from "../../components/tickets/NewTicketModal";
 import CloseTicketModal from "../../components/tickets/CloseTicketModal";
 import ArchiveTicketModal from "../../components/tickets/ArchiveTicketModal";
 import EditTicketModal from "../../components/tickets/EditTicketModal";
+import WeeksGrid from "../../components/weeks/WeeksGrid";
 import useNow from "../../hooks/useNow";
 import useModal from "../../hooks/useModal";
 import useTickets from "../../hooks/useTickets";
 import { formatDayHeaderAR, formatYearDay } from "../../utils/date";
 import type { Ticket } from "../../interfaces/Ticket";
 import { TicketStatus } from "../../interfaces/enums";
-
-function normalizeText(v: unknown) {
-  return String(v ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function matchesQuery(haystack: string, query: string) {
-  const q = normalizeText(query).trim();
-  if (!q) return true;
-
-  const words = q.split(/\s+/).filter(Boolean);
-  const hay = normalizeText(haystack);
-
-  return words.every((w) => hay.includes(w));
-}
-
-function getCloseDescription(ticket: Ticket): string {
-  const rootMeta = (ticket.meta ?? {}) as Record<string, unknown>;
-  const processMeta = (ticket.process?.meta ?? {}) as Record<string, unknown>;
-
-  const fromProcess =
-    typeof processMeta.closeDescription === "string"
-      ? processMeta.closeDescription
-      : "";
-
-  const fromRoot =
-    typeof rootMeta.closeDescription === "string"
-      ? rootMeta.closeDescription
-      : "";
-
-  return (fromProcess || fromRoot || "").trim();
-}
 
 export default function DashboardPage() {
   const now = useNow(1000);
@@ -103,8 +70,6 @@ export default function DashboardPage() {
   const closedQuery = query;
 
   const leftTickets = useMemo(() => {
-    // ✅ el hook ya trae SOLO cerrados (status=CERRADO) y paginados,
-    // pero mantenemos el filtro por seguridad y para el caso de archivados
     const base = tickets
       .filter(
         (t) =>
@@ -119,20 +84,13 @@ export default function DashboardPage() {
         return tb - ta;
       });
 
-    // ✅ refinamiento local: incluye detalle/cierre (porque el back hoy busca principalmente en message)
     const q = closedQuery.trim();
     if (!q) return base;
 
-    return base.filter((t) => {
-      const closeDesc = getCloseDescription(t);
-
-      const searchable = [t.details ?? "", closeDesc]
-        .map((s) => String(s ?? "").trim())
-        .filter(Boolean)
-        .join(" ");
-
-      return matchesQuery(searchable, q);
-    });
+    // ✅ IMPORTANTE:
+    // cuando hay búsqueda, el backend ya filtra (incluyendo siteLabel).
+    // si filtramos de nuevo acá, podemos descartar matches válidos (ej: INGRESO por siteLabel).
+    return base;
   }, [tickets, closedQuery]);
 
   return (
@@ -246,6 +204,9 @@ export default function DashboardPage() {
         <div className="flex h-full min-h-0 flex-col">
           <div className="shrink-0 space-y-4">
             <RightActions onNew={newTicketModal.open} />
+
+            {/* ✅ NUEVO: grilla de semanas */}
+            <WeeksGrid now={now} />
 
             <PendingPanel
               tickets={pendingTickets}

@@ -35,6 +35,20 @@ function tagChip(tag: TicketTag) {
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
+// ✅ toma el primer token numérico (acepta "#137" o "137") para resaltar el publicId
+function extractTicketIdQuery(q?: string): string {
+  const words = String(q ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const token = words
+    .map((w) => w.replace(/^#/, ""))
+    .find((w) => /^\d+$/.test(w));
+
+  return token ?? "";
+}
+
 type Props = {
   ticket: Ticket;
   searchQuery?: string;
@@ -115,6 +129,8 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
   const canArchive =
     ticket.status === TicketStatus.CERRADO && !ticket.archived && !!onArchive;
 
+  const idQuery = extractTicketIdQuery(searchQuery);
+
   return (
     <article
       className={[
@@ -128,7 +144,10 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
           {/* ✅ ID visible para referenciar tickets */}
           <div className="mb-1 flex items-center gap-2">
             <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700">
-              #{ticket.publicId}
+              #
+              {idQuery
+                ? highlightText(String(ticket.publicId), idQuery)
+                : ticket.publicId}
             </span>{" "}
             {ticket.archived ? (
               <span className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-extrabold text-slate-600">
@@ -209,7 +228,10 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
                 "bg-blue-100 text-blue-700",
               ].join(" ")}
             >
-              {ticket.siteLabel}
+              {/* ✅ resaltar también el nombre del sitio */}
+              {searchQuery
+                ? highlightText(ticket.siteLabel ?? "", searchQuery)
+                : ticket.siteLabel}
             </span>
           ) : null}
 
