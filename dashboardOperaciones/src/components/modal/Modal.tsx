@@ -39,30 +39,34 @@ export default function Modal({
       role="dialog"
       aria-modal="true"
     >
-      {/* overlay */}
-      <div className="absolute inset-0 bg-black/40" onMouseDown={onClose} />
+      {/* Fondo detrás del modal */}
+      <div
+        className="absolute inset-0 bg-black/40 dark:bg-black/70"
+        onMouseDown={onClose}
+      />
 
-      {/* panel */}
+      {/* Panel principal */}
       <div
         className={[
           "relative w-full",
           maxWidthClassName,
           "rounded-2xl bg-white shadow-xl",
           "border border-slate-200",
-          // ✅ clave: limitar alto, flex layout y evitar que el footer “se vaya”
+          "dark:border-slate-700 dark:bg-slate-800",
+          "transition-colors duration-200",
           "max-h-[92vh] flex flex-col overflow-hidden",
         ].join(" ")}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* header (no scrollea) */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6 sm:pt-5 sm:pb-4">
-          <div className="text-base sm:text-lg font-extrabold text-slate-900">
+        {/* Encabezado fijo */}
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700 sm:px-6 sm:pt-5 sm:pb-4">
+          <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 sm:text-lg">
             {title}
           </div>
 
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             aria-label="Cerrar"
             type="button"
           >
@@ -70,8 +74,16 @@ export default function Modal({
           </button>
         </div>
 
-        {/* body (scrollea) */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        {/* Contenido con desplazamiento independiente */}
+        <div
+          className={[
+            "flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5",
+            "text-slate-900 dark:text-slate-200",
+            "[scrollbar-width:thin]",
+            "[scrollbar-color:#94a3b8_#f1f5f9]",
+            "dark:[scrollbar-color:#475569_#1e293b]",
+          ].join(" ")}
+        >
           {children}
         </div>
       </div>

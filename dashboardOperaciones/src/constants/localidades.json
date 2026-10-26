@@ -24,10 +24,6 @@
     "nombre": "Aldao"
   },
   {
-    "id": "82119010",
-    "nombre": "Aldao"
-  },
-  {
     "id": "82098010",
     "nombre": "Alejandra"
   },
@@ -1585,5 +1581,9 @@
   {
     "id": "90000015",
     "nombre": "Pujato Norte"
+  },
+  {
+    "id": "90000016",
+    "nombre": "Colonia San Jose"
   }
 ]

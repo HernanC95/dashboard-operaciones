@@ -555,7 +555,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
       <div className="space-y-4">
         {/* TicketKind */}
         <div>
-          <label className="text-sm font-bold text-slate-700">Tipo</label>
+          <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+            Tipo
+          </label>
           <div className="mt-2">
             <select
               value={ticketKind}
@@ -569,7 +571,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                 // ✅ si cambia a Z15, default lpar
                 if (next === TicketKind.Z15) setLpar(Lpar.PROD);
               }}
-              className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+              className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
             >
               {Object.values(TicketKind).map((k) => (
                 <option key={k} value={k}>
@@ -582,12 +584,12 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
         {/* Z15 Plantillas */}
         {isZ15 ? (
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div>
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 Plantilla PROCESOS_Z15
               </div>
-              <div className="mt-1 text-sm text-slate-500">
+              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Seleccioná el proceso y completá lo mínimo. El mensaje se genera
                 solo (y podés editarlo).
               </div>
@@ -595,24 +597,26 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
             {/* ✅ LPAR */}
             <div>
-              <label className="text-sm font-bold text-slate-700">LPAR</label>
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                LPAR
+              </label>
               <select
                 value={lpar}
                 onChange={(e) => setLpar(e.target.value as Lpar)}
-                className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
               >
                 <option value="PROD">PROD</option>
                 <option value="TEST">TEST</option>
                 <option value="CAPA">CAPA</option>
                 <option value="INFRA">INFRA</option>
               </select>
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Seleccioná en qué LPAR se ejecuta el proceso.
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-bold text-slate-700">
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                 Proceso
               </label>
               <select
@@ -620,7 +624,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                 onChange={(e) =>
                   setZ15TemplateKey(e.target.value as Z15TemplateKey)
                 }
-                className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
               >
                 {Z15_TEMPLATES.map((t) => (
                   <option key={t.key} value={t.key}>
@@ -632,7 +636,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
             {/* Inicio del proceso */}
             <div>
-              <label className="text-sm font-bold text-slate-700">
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                 Inicio del proceso
               </label>
               <div className="mt-2 flex gap-2">
@@ -643,7 +647,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                     "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ring-1",
                     z15Result === "OK"
                       ? "bg-slate-900 text-white ring-slate-900"
-                      : "bg-white text-slate-800 ring-slate-200 hover:bg-slate-50",
+                      : "bg-white text-slate-800 ring-slate-200 hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:hover:bg-slate-600",
                   ].join(" ")}
                 >
                   Inició OK
@@ -656,14 +660,14 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                     "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ring-1",
                     z15Result === "ERROR"
                       ? "bg-slate-900 text-white ring-slate-900"
-                      : "bg-white text-slate-800 ring-slate-200 hover:bg-slate-50",
+                      : "bg-white text-slate-800 ring-slate-200 hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:hover:bg-slate-600",
                   ].join(" ")}
                 >
                   Error al iniciar
                 </button>
               </div>
 
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Para procesos largos, esto indica si pudo <b>iniciar</b>. El
                 resultado final se informa al cerrar el ticket.
               </div>
@@ -673,7 +677,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
             {z15Template.needsSyslogCuts ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-bold text-slate-700">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                     SYSLOG - Corte inicial (YYDDD/HHMMSS)
                   </label>
                   <input
@@ -681,15 +685,15 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                     value={syslogCutStart}
                     onChange={(e) => setSyslogCutStart(e.target.value)}
                     placeholder="25356/002101"
-                    className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                    className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
                   />
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     Ejemplo: <b>25356/002101</b>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-bold text-slate-700">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                     SYSLOG - Corte final (YYDDD/HHMMSS)
                   </label>
                   <input
@@ -697,9 +701,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                     value={syslogCutEnd}
                     onChange={(e) => setSyslogCutEnd(e.target.value)}
                     placeholder="25356/002159"
-                    className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                    className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
                   />
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                     Ejemplo: <b>25356/002159</b>
                   </div>
                 </div>
@@ -709,25 +713,25 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
             {/* ✅ IMS IPL: SOLO checkpoint DOWN */}
             {z15Template.needsImsDownCheckpoint ? (
               <div>
-                <label className="text-sm font-bold text-slate-700">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                   Checkpoint IMS DOWN (YYDDD/HHMMSS)
                 </label>
                 <input
                   value={imsDownCheckpoint}
                   onChange={(e) => setImsDownCheckpoint(e.target.value)}
                   placeholder="25355/105232"
-                  className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                  className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
                 />
-                <div className="mt-2 text-xs text-slate-500">
+                <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                   Ejemplo: <b>25355/105232</b>
                 </div>
               </div>
             ) : null}
 
             {/* ✅ Mensaje editable */}
-            <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-3">
+            <div className="rounded-xl bg-slate-50 ring-1 ring-slate-200 p-3 dark:bg-slate-800 dark:ring-slate-600">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-xs font-bold text-slate-700">
+                <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Mensaje generado
                 </div>
 
@@ -737,7 +741,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                     setZ15MessageTouched(false);
                     setZ15MessageDraft("");
                   }}
-                  className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+                  className="text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                   title="Restablecer al mensaje generado"
                 >
                   Reset
@@ -751,10 +755,10 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                   setZ15MessageDraft(e.target.value);
                 }}
                 rows={3}
-                className="mt-2 w-full resize-none rounded-xl bg-white px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:ring-2 focus:ring-slate-300"
+                className="mt-2 w-full resize-none rounded-xl bg-white px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:ring-2 focus:ring-slate-300 dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-600 dark:focus:ring-blue-500"
               />
 
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Podés editar el mensaje antes de crear el ticket.
               </div>
             </div>
@@ -763,7 +767,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
 
         {/* Operador */}
         <div>
-          <label className="text-sm font-bold text-slate-700">Operador</label>
+          <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+            Operador
+          </label>
           <select
             value={operator?.id ?? ""}
             onChange={(e) => {
@@ -771,7 +777,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
               const selected = PEOPLE.find((p) => p.id === id) ?? null;
               setOperator(selected);
             }}
-            className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+            className="mt-2 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
           >
             <option value="" disabled>
               Seleccionar operador
@@ -782,7 +788,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
               </option>
             ))}
           </select>
-          <div className="mt-2 text-xs text-slate-500">
+          <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Obligatorio: debés seleccionar un operador.
           </div>
         </div>
@@ -790,7 +796,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         {/* Mensaje (solo no-Z15) */}
         {!isZ15 ? (
           <div>
-            <label className="text-sm font-bold text-slate-700">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
               Mensaje / Descripción
             </label>
             <textarea
@@ -798,7 +804,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Descripción detallada del registro..."
               rows={4}
-              className="mt-2 w-full resize-none rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+              className="mt-2 w-full resize-none rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
             />
           </div>
         ) : null}
@@ -806,14 +812,14 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         {/* Localidad (solo INGRESO) */}
         {showSite ? (
           <div>
-            <label className="text-sm font-bold text-slate-700">
+            <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
               Localidad (mín. 3 letras)
             </label>
             <div className="mt-2">
               <LocalidadSelect value={localidad} onChange={setLocalidad} />
             </div>
             {!localidad ? (
-              <div className="mt-2 text-xs text-slate-500">
+              <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Tip: escribí “san”, “ros”, “rec”, etc.
               </div>
             ) : null}
@@ -821,13 +827,13 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         ) : null}
 
         {/* Fecha/hora creación */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 Definir fecha y hora manualmente
               </div>
-              <div className="mt-1 text-sm text-slate-500">
+              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 Si está desactivado, se usa la hora actual.
               </div>
             </div>
@@ -837,7 +843,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
               onClick={() => setUseManualDate((v) => !v)}
               className={[
                 "relative h-7 w-12 rounded-full transition",
-                useManualDate ? "bg-slate-900" : "bg-slate-300",
+                useManualDate
+                  ? "bg-slate-900 dark:bg-blue-600"
+                  : "bg-slate-300 dark:bg-slate-600",
               ].join(" ")}
               aria-pressed={useManualDate}
               aria-label="Toggle fecha/hora manual"
@@ -857,20 +865,20 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
                 type="datetime-local"
                 value={createdAtValue}
                 onChange={(e) => setCreatedAtValue(e.target.value)}
-                className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+                className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:ring-slate-600 dark:focus:bg-slate-700 dark:focus:ring-blue-500"
               />
             </div>
           ) : null}
         </div>
 
         {/* Recordatorio */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 Mantener como Recordatorio
               </div>
-              <div className="mt-1 text-sm text-slate-500">
+              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                 El registro permanecerá visible en el dashboard durante varios
                 días
               </div>
@@ -881,7 +889,9 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
               onClick={() => setIsReminder((v) => !v)}
               className={[
                 "relative h-7 w-12 rounded-full transition",
-                isReminder ? "bg-slate-900" : "bg-slate-300",
+                isReminder
+                  ? "bg-slate-900 dark:bg-blue-600"
+                  : "bg-slate-300 dark:bg-slate-600",
               ].join(" ")}
               aria-pressed={isReminder}
               aria-label="Toggle recordatorio"
@@ -900,7 +910,7 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
           >
             Cancelar
           </button>
@@ -911,8 +921,8 @@ export default function NewTicketModal({ open, onClose, onCreate }: Props) {
             className={[
               "rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow",
               canSubmit
-                ? "bg-slate-900 hover:bg-slate-800"
-                : "bg-slate-400 cursor-not-allowed",
+                ? "bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500"
+                : "bg-slate-400 cursor-not-allowed dark:bg-slate-600 dark:text-slate-300",
             ].join(" ")}
           >
             Crear Registro

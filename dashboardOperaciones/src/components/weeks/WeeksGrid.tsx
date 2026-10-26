@@ -38,34 +38,42 @@ function stylesByVariant(variant: FilterVariant) {
       return {
         activeBtn: "border-blue-700 bg-blue-700 text-white",
         idleBtn:
-          "border-blue-200 bg-white text-blue-800 hover:border-blue-400 hover:bg-blue-50",
+          "border-blue-200 bg-white text-blue-800 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-500 dark:hover:bg-blue-950",
         badgeActive: "bg-white/20 text-white",
-        badgeIdle: "bg-blue-50 text-blue-800 border border-blue-200",
+        badgeIdle:
+          "bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
       };
+
     case "Z15":
       return {
         activeBtn: "border-red-700 bg-red-700 text-white",
         idleBtn:
-          "border-red-200 bg-white text-red-800 hover:border-red-400 hover:bg-red-50",
+          "border-red-200 bg-white text-red-800 hover:border-red-400 hover:bg-red-50 dark:border-red-800 dark:bg-slate-800 dark:text-red-300 dark:hover:border-red-500 dark:hover:bg-red-950",
         badgeActive: "bg-white/20 text-white",
-        badgeIdle: "bg-red-50 text-red-800 border border-red-200",
+        badgeIdle:
+          "bg-red-50 text-red-800 border border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800",
       };
+
     case "NOTICIA":
       return {
         activeBtn: "border-purple-700 bg-purple-700 text-white",
         idleBtn:
-          "border-purple-200 bg-white text-purple-800 hover:border-purple-400 hover:bg-purple-50",
+          "border-purple-200 bg-white text-purple-800 hover:border-purple-400 hover:bg-purple-50 dark:border-purple-800 dark:bg-slate-800 dark:text-purple-300 dark:hover:border-purple-500 dark:hover:bg-purple-950",
         badgeActive: "bg-white/20 text-white",
-        badgeIdle: "bg-purple-50 text-purple-800 border border-purple-200",
+        badgeIdle:
+          "bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800",
       };
+
     case "ALL":
     default:
       return {
-        activeBtn: "border-slate-900 bg-slate-900 text-white",
+        activeBtn:
+          "border-slate-900 bg-slate-900 text-white dark:border-blue-700 dark:bg-blue-700 dark:text-white",
         idleBtn:
-          "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+          "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700",
         badgeActive: "bg-white/20 text-white",
-        badgeIdle: "bg-slate-100 text-slate-700",
+        badgeIdle:
+          "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
       };
   }
 }
@@ -97,7 +105,7 @@ function FilterButton({
         "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-extrabold",
         "transition-all duration-200 ease-out",
         isDisabled
-          ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
+          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600"
           : active
             ? [s.activeBtn, "shadow-sm"].join(" ")
             : [
@@ -112,7 +120,7 @@ function FilterButton({
         className={[
           "rounded-full px-2 py-0.5 text-xs font-bold",
           isDisabled
-            ? "bg-white text-slate-300"
+            ? "bg-white text-slate-300 dark:bg-slate-800 dark:text-slate-600"
             : active
               ? s.badgeActive
               : s.badgeIdle,
@@ -132,6 +140,7 @@ export default function WeeksGrid({ now }: Props) {
   const [year, setYear] = useState(currentYear);
 
   const totalWeeks = useMemo(() => getISOWeeksInYear(year), [year]);
+
   const weeks = useMemo(
     () => Array.from({ length: totalWeeks }, (_, i) => i + 1),
     [totalWeeks],
@@ -162,6 +171,7 @@ export default function WeeksGrid({ now }: Props) {
     const ingresos = tickets.filter((t) => t.ticketKind === "INGRESO").length;
     const z15 = tickets.filter((t) => t.ticketKind === "Z15").length;
     const noticias = tickets.filter((t) => t.ticketKind === "NOTICIA").length;
+
     return { all, ingresos, z15, noticias };
   }, [tickets]);
 
@@ -214,44 +224,49 @@ export default function WeeksGrid({ now }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors duration-200 dark:border-slate-700 dark:bg-slate-800">
+      {/* Encabezado */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-extrabold text-slate-900">
+          <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
             Semanas del año
           </div>
-          <div className="mt-1 text-sm text-slate-500">
+
+          <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Click en una semana para ver los tickets de ese rango.
           </div>
         </div>
 
+        {/* Navegación entre años */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={!canPrevYear}
             onClick={() => setYear((y) => y - 1)}
             className={[
-              "rounded-lg border px-3 py-2 text-sm font-bold",
+              "rounded-lg border px-3 py-2 text-sm font-bold transition-colors",
               canPrevYear
-                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                : "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed",
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600",
             ].join(" ")}
             title="Año anterior"
           >
             ←
           </button>
 
-          <div className="text-sm font-extrabold text-slate-900">{year}</div>
+          <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+            {year}
+          </div>
 
           <button
             type="button"
             disabled={!canNextYear}
             onClick={() => setYear((y) => y + 1)}
             className={[
-              "rounded-lg border px-3 py-2 text-sm font-bold",
+              "rounded-lg border px-3 py-2 text-sm font-bold transition-colors",
               canNextYear
-                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                : "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed",
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                : "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600",
             ].join(" ")}
             title="Año siguiente"
           >
@@ -260,6 +275,7 @@ export default function WeeksGrid({ now }: Props) {
         </div>
       </div>
 
+      {/* Grilla de semanas */}
       <div className="mt-3 grid grid-cols-13 gap-2">
         {weeks.map((w) => {
           const isActive = activeWeek === w;
@@ -275,13 +291,14 @@ export default function WeeksGrid({ now }: Props) {
                 "relative rounded-xl border px-2 py-2 text-sm font-extrabold",
                 "transition-all duration-200 ease-out",
                 disabled
-                  ? "border-slate-100 bg-slate-100 text-slate-300 cursor-not-allowed"
+                  ? "cursor-not-allowed border-slate-100 bg-slate-100 text-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600"
                   : isActive
                     ? [
                         "border-blue-700 bg-blue-700 text-white",
                         "shadow-md",
                         "hover:bg-blue-600 hover:shadow-lg",
                         "hover:scale-[1.03]",
+                        "dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500",
                       ].join(" ")
                     : [
                         "border-slate-200 bg-white text-slate-800",
@@ -290,6 +307,8 @@ export default function WeeksGrid({ now }: Props) {
                         "hover:shadow-lg",
                         "hover:border-blue-400",
                         "hover:bg-blue-50",
+                        "dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200",
+                        "dark:hover:border-blue-500 dark:hover:bg-slate-700",
                       ].join(" "),
               ].join(" ")}
               title={
@@ -306,6 +325,7 @@ export default function WeeksGrid({ now }: Props) {
         })}
       </div>
 
+      {/* Modal de tickets por semana */}
       <Modal
         open={open}
         onClose={() => setOpen(false)}
@@ -313,12 +333,13 @@ export default function WeeksGrid({ now }: Props) {
         maxWidthClassName="max-w-[900px]"
       >
         {range ? (
-          <div className="mb-3 text-sm text-slate-600">
+          <div className="mb-3 text-sm text-slate-600 dark:text-slate-300">
             Rango: <span className="font-semibold">{range.from}</span> →{" "}
             <span className="font-semibold">{range.to}</span>
           </div>
         ) : null}
 
+        {/* Filtros */}
         <div className="mb-4 flex flex-wrap gap-2">
           <FilterButton
             active={filter === "ALL"}
@@ -353,16 +374,20 @@ export default function WeeksGrid({ now }: Props) {
           />
         </div>
 
+        {/* Error */}
         {error ? (
-          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
+          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300">
             {error}
           </div>
         ) : null}
 
+        {/* Resultados */}
         {loading ? (
-          <div className="text-sm text-slate-600">Cargando tickets…</div>
+          <div className="text-sm text-slate-600 dark:text-slate-300">
+            Cargando tickets…
+          </div>
         ) : visibleTickets.length === 0 ? (
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-slate-600 dark:text-slate-300">
             No hay tickets para ese filtro en ese rango.
           </div>
         ) : (

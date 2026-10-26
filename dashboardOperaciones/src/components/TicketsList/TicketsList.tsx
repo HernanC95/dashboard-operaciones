@@ -7,15 +7,15 @@ type Props = {
   tickets: Ticket[];
   searchQuery?: string;
 
-  // ✅ ARCHIVE (opcional)
+  // ARCHIVE (opcional)
   onArchive?: (ticketId: string) => void;
 
-  // ✅ INFINITE SCROLL
+  // INFINITE SCROLL
   hasMore?: boolean;
   isLoading?: boolean;
   onLoadMore?: () => void;
 
-  // ✅ opcional: contenido extra debajo (botones, etc.)
+  // Contenido extra debajo
   footer?: React.ReactNode;
 };
 
@@ -47,7 +47,7 @@ export default function TicketsList({
         onLoadMore();
       },
       {
-        // hace que cargue un poquito antes de llegar al final
+        // Carga un poco antes de llegar al final
         root: null,
         rootMargin: "300px",
         threshold: 0,
@@ -74,22 +74,22 @@ export default function TicketsList({
         ))}
       </div>
 
-      {/* sentinel para infinite scroll */}
+      {/* Sentinel para infinite scroll */}
       <div ref={sentinelRef} />
 
-      {/* loader */}
+      {/* Indicador de carga */}
       {isLoading ? (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 transition-colors duration-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
           Cargando...
         </div>
       ) : null}
 
-      {/* footer opcional */}
+      {/* Footer opcional */}
       {footer ? <div className="pt-2">{footer}</div> : null}
 
-      {/* mensaje fin */}
+      {/* Mensaje de fin */}
       {!isLoading && tickets.length > 0 && !hasMore ? (
-        <div className="text-center text-xs text-slate-500 py-2">
+        <div className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">
           No hay más tickets para mostrar.
         </div>
       ) : null}

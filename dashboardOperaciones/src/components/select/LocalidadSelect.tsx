@@ -22,6 +22,7 @@ export default function LocalidadSelect({ value, onChange }: Props) {
 
   return (
     <div className="relative">
+      {/* Campo de búsqueda */}
       <input
         value={query}
         placeholder="Escribí al menos 3 letras…"
@@ -32,11 +33,27 @@ export default function LocalidadSelect({ value, onChange }: Props) {
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800 outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-300"
+        className={[
+          "w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800",
+          "outline-none ring-1 ring-slate-200",
+          "focus:bg-white focus:ring-2 focus:ring-slate-300",
+          "transition-colors duration-200",
+          "dark:bg-slate-900 dark:text-slate-100 dark:ring-slate-600",
+          "dark:placeholder:text-slate-500",
+          "dark:focus:bg-slate-800 dark:focus:ring-blue-500",
+        ].join(" ")}
       />
 
+      {/* Lista de localidades */}
       {open && results.length > 0 && (
-        <div className="absolute z-50 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div
+          className={[
+            "absolute z-50 mt-2 max-h-64 w-full overflow-auto rounded-xl",
+            "border border-slate-200 bg-white shadow-lg",
+            "dark:border-slate-600 dark:bg-slate-900 dark:shadow-black/30",
+            "transition-colors duration-200",
+          ].join(" ")}
+        >
           {results.map((loc) => (
             <button
               key={loc.id}
@@ -47,12 +64,20 @@ export default function LocalidadSelect({ value, onChange }: Props) {
                 setQuery(loc.nombre);
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-slate-50"
+              className={[
+                "flex w-full items-center justify-between px-4 py-2 text-left",
+                "hover:bg-slate-50",
+                "dark:hover:bg-slate-700",
+                "transition-colors duration-150",
+              ].join(" ")}
             >
-              <span className="text-sm font-semibold text-slate-800">
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {loc.nombre}
               </span>
-              <span className="text-xs text-slate-400">{loc.id}</span>
+
+              <span className="text-xs text-slate-400 dark:text-slate-500">
+                {loc.id}
+              </span>
             </button>
           ))}
         </div>

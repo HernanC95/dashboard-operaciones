@@ -17,25 +17,33 @@ function leftBorderbyKind(kind: TicketKind) {
 }
 
 function kindChip(kind: TicketKind) {
-  if (kind === TicketKind.Z15) return "bg-red-100 text-red-700 border-red-200";
+  if (kind === TicketKind.Z15)
+    return "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800";
+
   if (kind === TicketKind.NOTICIA)
-    return "bg-purple-100 text-purple-700 border-purple-200";
+    return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800";
+
   if (kind === TicketKind.INGRESO)
-    return "bg-blue-100 text-blue-700 border-blue-200";
-  return "bg-slate-100 text-slate-700 border-slate-200";
+    return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800";
+
+  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600";
 }
 
 function tagChip(tag: TicketTag) {
   if (tag === "RECORDATORIO")
-    return "bg-pink-100 text-pink-700 border-pink-200";
+    return "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800";
+
   if (tag === "IMPORTANTE")
-    return "bg-orange-100 text-orange-700 border-orange-200";
+    return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800";
+
   if (tag === "MENCIONES")
-    return "bg-indigo-100 text-indigo-700 border-indigo-200";
-  return "bg-slate-100 text-slate-700 border-slate-200";
+    return "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800";
+
+  return "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600";
 }
 
-// ✅ toma el primer token numérico (acepta "#137" o "137") para resaltar el publicId
+// Toma el primer token numérico (acepta "#137" o "137")
+// para resaltar el publicId.
 function extractTicketIdQuery(q?: string): string {
   const words = String(q ?? "")
     .trim()
@@ -53,7 +61,7 @@ type Props = {
   ticket: Ticket;
   searchQuery?: string;
 
-  // ✅ NUEVO: archivar (soft)
+  // Archivar ticket (soft delete)
   onArchive?: (ticketId: string) => void;
 };
 
@@ -79,6 +87,7 @@ function buildDisplayDetails(ticket: Ticket): string {
   }
 
   if (!isClosed) return base;
+
   const baseAlreadyHasClose =
     /\[cierre\]/i.test(base) || /resultado final:/i.test(base);
 
@@ -134,23 +143,24 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
   return (
     <article
       className={[
-        "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm",
+        "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors duration-200",
+        "dark:border-slate-700 dark:bg-slate-800",
         "border-l-4",
         leftBorderbyKind(ticket.ticketKind),
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="text-sm font-extrabold text-slate-900">
-          {/* ✅ ID visible para referenciar tickets */}
+        <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+          {/* ID visible para referenciar tickets */}
           <div className="mb-1 flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700">
+            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
               #
               {idQuery
                 ? highlightText(String(ticket.publicId), idQuery)
                 : ticket.publicId}
             </span>{" "}
             {ticket.archived ? (
-              <span className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-extrabold text-slate-600">
+              <span className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-extrabold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300">
                 ARCHIVADO
               </span>
             ) : null}
@@ -165,7 +175,8 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
             })()}
           </div>
 
-          <div className="text-lg font-extrabold text-slate-900">
+          {/* Horarios */}
+          <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
             {(() => {
               const open = ticket.audit.createdAt;
               const close =
@@ -176,24 +187,25 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
               const openLabel = `${formatTimeAR(open)} HS`;
               if (!close) return openLabel;
 
-              // ✅ si la hora/minuto de apertura y cierre es igual, mostrar una sola vez
+              // Si apertura y cierre coinciden, mostrar una sola hora.
               const sameTime =
                 open.getHours() === close.getHours() &&
                 open.getMinutes() === close.getMinutes();
 
               if (sameTime) return openLabel;
+
               return `${openLabel} - ${formatTimeAR(close)} HS`;
             })()}
           </div>
         </div>
 
+        {/* Acciones y etiquetas */}
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {/* ✅ Botón archivar */}
           {canArchive ? (
             <button
               type="button"
               onClick={() => onArchive(ticket.id)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-extrabold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
               title="Archivar ticket (no se borra)"
             >
               Archivar
@@ -225,10 +237,9 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
             <span
               className={[
                 "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold",
-                "bg-blue-100 text-blue-700",
+                "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
               ].join(" ")}
             >
-              {/* ✅ resaltar también el nombre del sitio */}
               {searchQuery
                 ? highlightText(ticket.siteLabel ?? "", searchQuery)
                 : ticket.siteLabel}
@@ -236,38 +247,35 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
           ) : null}
 
           {ticket.ticketKind === TicketKind.Z15 && ticket.lpar ? (
-            <span
-              className={[
-                "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold",
-                "bg-slate-100 text-slate-800 border-slate-200",
-              ].join(" ")}
-            >
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-800 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
               {ticket.lpar}
             </span>
           ) : null}
         </div>
       </div>
 
+      {/* Descripción */}
       <ClampText
         lines={3}
-        className="mt-2 text-sm text-slate-700"
+        className="mt-2 text-sm text-slate-700 dark:text-slate-300"
         text={
           searchQuery ? highlightText(displayText, searchQuery) : displayText
         }
       />
 
-      <div className="mt-4 space-y-1 text-xs text-slate-500">
+      {/* Información de operadores */}
+      <div className="mt-4 space-y-1 text-xs text-slate-500 dark:text-slate-400">
         {!isClosed ? (
           <div>
             Cargado por:{" "}
-            <span className="font-semibold text-slate-700">
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
               {createdBy.name}
             </span>
           </div>
         ) : samePerson ? (
           <div>
             Carga/Cierre:{" "}
-            <span className="font-semibold text-slate-700">
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
               {createdBy.name}
             </span>
           </div>
@@ -275,14 +283,14 @@ export default function TicketCard({ ticket, searchQuery, onArchive }: Props) {
           <>
             <div>
               Cargado por:{" "}
-              <span className="font-semibold text-slate-700">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {createdBy.name}
               </span>
             </div>
 
             <div>
               Cerrado por:{" "}
-              <span className="font-semibold text-slate-700">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
                 {closedBy?.name ?? "—"}
               </span>
             </div>
